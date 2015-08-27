@@ -1,0 +1,17 @@
+Exercise 6.8
+A) Because in a heap children must be larger than their parents, it impossible
+for a node that has children to be the maximum. The largest element must be a 
+leaf because the largest element, by the heap–order property, does not have 
+any children–any node with children is at the least smaller than those children
+
+B) In a binary tree of height h, there are (2^h) leaf nodes, and (2^(h+1) - 1) 
+total nodes. Thus, in a binary heap, there are always at most 2^h leaf nodes 
+(this occurs if it is a perfect binary heap). Because 2*(2^h) = (2^(h+1) - 1)), 
+we can see that the total number of leaf nodes is half of the total number 
+of nodes in the tree. 
+
+C) Because the maximum has to be a leaf, we know that we can find the maximum by
+examining the leaves. Unfortunately, the heap-order property says only that 
+children must be larger than their parents; this means that while all leaves are
+larger than the parents (and the maximum is therefore definitely a leaf), we must 
+actually check each leaf to find it. 

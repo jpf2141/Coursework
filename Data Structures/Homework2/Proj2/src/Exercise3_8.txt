@@ -1,0 +1,50 @@
+Exercise 3.2
+A)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+B) 
+
+
+
+
+
+
+
+
+
+
+
+
+
+Exercise 3.8 
+A) Because each iteration of the for loop removes an element. If theSize was saved after entering the for loop, after each iteration it would equal a different value and not accurately represent the size of the list. 
+
+B) O(N^2) -a single deletion in an array list is O(N) (because the arraylist needs to be readjusted after an index is removed), 
+but to do N/2 iterations is also an order of O(N) operation, therefore the total time complexity
+is O(N^2).  
+
+C) O(N) A deletion at the beginning of a linked list is O(1), but doing N/2 deletions (half the list) is an order of N operation, therefore it is
+O(N). 
+
+D) Using an iterator does not make arrayList removals faster. It would improve performance if we were deleting from the middle of the linked list,
+but since a deletion at the beginning of the list is still constant time, and because this same deletion is performed N/2 times because 
+we are still deleting half the list, there is no efficiency change with using an iterator in this instance. 
+
+Exersize 4.9
+
+
+
+
+

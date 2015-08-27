@@ -1,0 +1,10 @@
+1399319095520	Rename field 'vertexList'
+1399323424872	Rename field 'assigned'
+1399325334719	Rename method 'printList'
+1399328018988	Rename type 'Kruskal'
+1399346621786	Rename type 'Spanner'
+1399359803191	Rename field 'spanCities'
+1399359830549	Rename field 'cityMap'
+1399359837768	Rename field 'cityEdges'
+1399424569180	Rename local variable 'edgeCurtoNxt'
+1399612046165	Copy compilation unit

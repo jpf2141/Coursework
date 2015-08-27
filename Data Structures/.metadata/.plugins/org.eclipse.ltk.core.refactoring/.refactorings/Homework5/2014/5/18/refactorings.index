@@ -1,0 +1,28 @@
+1398905070631	Rename resource 'Grapher'
+1398905091753	Move file
+1398915868062	Rename field 'HuffmanNodeHashArray'
+1398916661472	Delete element
+1398996179183	Rename local variable 'o'
+1398996191629	Rename local variable 'oarg'
+1398997641311	Rename local variable 'v'
+1398999257330	Rename local variable 'character'
+1398999498174	Rename local variable 'character'
+1398999641354	Rename field 'HuffmanNodeHashArray'
+1399004563941	Delete element
+1399005888155	Rename method 'doDijkstra'
+1399081211502	Rename local variable 'vertex'
+1399081222856	Rename local variable 'linkedTo'
+1399083764854	Rename local variable 'v'
+1399083787974	Rename local variable 'i'
+1399084665327	Rename method 'vertexPasser'
+1399142692525	Rename type 'BinaryHeap'
+1399142816404	Delete element
+1399144442866	Rename local variable 'model'
+1399144807152	Rename local variable 'model'
+1399144877961	Rename local variable 'dropBox'
+1399144989957	Rename compilation unit 'MapGui.java'
+1399145415618	Rename method 'ask'
+1399146269022	Rename method 'getResponse'
+1399147846897	Rename field 'values'
+1399147867313	Rename field 'values'
+1399158169329	Rename field 'end'

@@ -1,0 +1,8 @@
+Some JVMs put restrictions on the total amount of memory available on the heap. If you are getting OutOfMemoryErrors while running Eclipse, the VM can be told to let the heap grow to a larger amount by passing the -vmargs command to the Eclipse launcher. For example, the following command would run Eclipse with a heap size of 256MB:
+
+eclipse [normal arguments] -vmargs -Xmx256M [more VM args]
+The arguments after -vmargs are directly passed to the VM. Run java -X for the list of options your VM accepts. Options starting with -X are implementation-specific and may not be applicable to all VMs.
+
+You can also put the extra options in eclipse.ini.
+
+Here is an example;
