@@ -1,0 +1,1699 @@
+From ba14b12b0d9aa42ab2b90fc79d4b63e4cac8aff0 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Fri, 1 May 2015 17:59:50 -0400
+Subject: [PATCH 01/10] basic 4 done
+
+---
+ part1/strlist.cpp |  135 +++++++++++++++++++++++++++++++++++
+ part1/strlist.h   |  206 ++++++++++++++++++++++++++++++-----------------------
+ 2 files changed, 252 insertions(+), 89 deletions(-)
+ create mode 100644 part1/strlist.cpp
+
+diff --git a/part1/strlist.cpp b/part1/strlist.cpp
+new file mode 100644
+index 0000000..da6f52a
+--- /dev/null
++++ b/part1/strlist.cpp
+@@ -0,0 +1,135 @@
++//
++//  strlist.cpp
++//  lab9
++//
++//  Created by Josh Fram on 4/29/15.
++//  Copyright (c) 2015 JoshFram. All rights reserved.
++//
++
++#include "strlist.h"
++#include "mystring.h"
++#include "mylist.h"
++
++//die
++
++static void die(const char *message)
++{
++    perror(message);
++    exit(1);
++}
++
++static void deleteString(void *s)
++{
++    MyString *str = (MyString *)s;
++    delete str;
++}
++
++static void appendList(struct List *target, struct List *source) {
++    reverseList(target);
++    
++    struct Node *sourceNode = source->head;
++    while(sourceNode) {
++        MyString *sourceString = (MyString *)sourceNode->data;
++        MyString *targetString = new MyString(*sourceString);
++        ::addFront(target, targetString);
++        
++        sourceNode = sourceNode->next;
++    }
++    
++    reverseList(target);
++}
++
++// default constructor
++
++StrList::StrList()
++{
++    initList(&list);
++}
++
++// destructor
++StrList::~StrList()
++{
++    traverseList(&list, &deleteString);
++}
++
++// copy constructor
++
++StrList::StrList(const StrList& myList)
++{
++    initList(&this->list);     //initialize copied list
++    
++    appendList(&this->list, (List *)&myList.list);
++    
++}
++
++// returns the number of nodes in the list
++
++int StrList::size(const StrList& myList) {
++    
++    int size = 0;
++    
++    struct Node *currentNode = myList.list.head;
++    while (currentNode != NULL) {
++        ++size;
++        currentNode = currentNode->next;
++    }
++    return size;
++}
++
++
++// adds a string to the front of the list
++
++void StrList::addFront(MyString str) {
++    
++    //::addFront(&this->list, (void *)str);
++
++}
++
++// Pops a string from the front of the list and returns it.
++// The result of popping from an empty list is undefined.
++//
++//this popFront()'s from myList.list (this->list)
++//then casts the returned void* as a char*
++//then constructs a MyString object, which is returned
++
++MyString StrList::popFront() {
++    
++    return MyString((char *)::popFront(&this->list));
++    
++}
++
++
++// reverse the elements in the list
++
++void StrList::reverse() {
++    
++    ::reverseList(&this->list);
++    
++}
++
++
++// operator+=
++// The result of "sl += sl" is undefined.
++StrList& StrList::operator+=(const StrList& list) {
++    
++    
++}
++
++
++
++
++
++
++
++
++
++
++
++
++
++
++
++
++
++
++
+diff --git a/part1/strlist.h b/part1/strlist.h
+index dfa5e4b..c5d3b6c 100644
+--- a/part1/strlist.h
++++ b/part1/strlist.h
+@@ -1,4 +1,4 @@
+-/* 
++/*
+  * strlist.h
+  */
+ 
+@@ -6,18 +6,18 @@
+ #define __STRLIST_H__
+ 
+ /*
+-   Copy the mystring.h/cpp files from lab9/solutions directory.
++ Copy the mystring.h/cpp files from lab9/solutions directory.
+  */
+ 
+ #include "mystring.h"
+ 
+ /*
+-   Note that extern "C" is required when you are linking with an
+-   object file or a library compiled in C from C++.
+-
+-   Use the usual -I, -L, -l flags in your Makefile to link with
+-   libmylist.a in your lab3/solutions directory.  Do NOT copy over
+-   any of the old linked list files into lab10 directory.
++ Note that extern "C" is required when you are linking with an
++ object file or a library compiled in C from C++.
++ 
++ Use the usual -I, -L, -l flags in your Makefile to link with
++ libmylist.a in your lab3/solutions directory.  Do NOT copy over
++ any of the old linked list files into lab10 directory.
+  */
+ 
+ extern "C" {
+@@ -25,87 +25,115 @@ extern "C" {
+ }
+ 
+ class StrList {
+-
+-    public:
+-
+-        // TODO: The basic 4.
+-        /*
+-           Don't worry about efficiency in this assignment.  Do what's
+-           the easiest.  For example, in order to append elements from
+-           one List to another using the C linked list API, you can
+-           reverse the target list, add elements using addFront, and
+-           then reverse it again when you're done.
+-
+-           In fact, you'll have to implement many member functions
+-           rather inefficiency due to the deficiency of the old list
+-           API.
+-         */
+-
+-
+-        // isEmpty() function
+-        /*
+-           I'm giving away this function to show you that you'll have
+-           to cast away the const-ness of the data member when
+-           necessary.
+-         */
+-        int isEmpty() const { return isEmptyList((List *)&list); }
+-
+-
+-        // TODO: size() function
+-        // returns the number of nodes in the list
+-
+-
+-        // TODO: addFront() function 
+-        // adds a string to the front of the list
+-        /*
+-           Note that in order to call the global addFront() function
+-           (which has the same name with the member function that
+-           you're writing) you have to append "::" in front, as in
+-           "::addFront(&list, ......)".
+-         */
+-
+-
+-        // TODO: popFront() function 
+-        // Pops a string from the front of the list and returns it.
+-        // The result of popping from an empty list is undefined.
+-
+-
+-        // TODO: reverse() function
+-        // reverse the elements in the list
+-
+-
+-        // TODO: operator+=
+-        // The result of "sl += sl" is undefined.
+-
+-
+-        // TODO: operator+
+-
+-
+-        // TODO: operator<<
+-        // Prints the content of the given list in the following
+-        // format: 
+-        //
+-        //     { one two three }
+-        // 
+-        // assuming you had the three strings ("one", "two", "three")
+-        // in the list.
+-
+-
+-        // TODO: operator[] 
+-        // This function takes O(n) time.
+-        // The result of accessing beyond the last element is undefined.
+-
+-
+-        // TODO: operator[] const
+-        // This function takes O(n) time.
+-        // The result of accessing beyond the last element is undefined.
+-
+-    private:
+-
+-        // This class contains the old C list structure as its single
+-        // data member.  Do NOT add any data member.
+-
+-        struct List list;
++    
++public:
++    
++    // TODO: The basic 4.
++    /*
++     Don't worry about efficiency in this assignment.  Do what's
++     the easiest.  For example, in order to append elements from
++     one List to another using the C linked list API, you can
++     reverse the target list, add elements using addFront, and
++     then reverse it again when you're done.
++     
++     In fact, you'll have to implement many member functions
++     rather inefficiency due to the deficiency of the old list
++     API.
++     */
++    
++    //done
++    // default constructor
++    StrList();
++    
++    //done
++    // constructor
++    StrList(const struct List);
++    
++    //done
++    // destructor
++    ~StrList();
++    
++    //done
++    // copy constructor
++    StrList(const StrList& list);
++    
++    
++    //done
++    // isEmpty() function
++    /*
++     I'm giving away this function to show you that you'll have
++     to cast away the const-ness of the data member when
++     necessary.
++     */
++    int isEmpty() const { return isEmptyList((List *)&list); }
++    
++    
++    //done
++    // TODO: size() function
++    // returns the number of nodes in the list
++    int size(const StrList& myList);
++    
++    
++    //declared
++    // TODO: addFront() function
++    // adds a string to the front of the list
++    /*
++     Note that in order to call the global addFront() function
++     (which has the same name with the member function that
++     you're writing) you have to append "::" in front, as in
++     "::addFront(&list, ......)".
++     */
++    void addFront(MyString str);
++    
++    
++    //done
++    // TODO: popFront() function
++    // Pops a string from the front of the list and returns it.
++    // The result of popping from an empty list is undefined.
++    MyString popFront();
++    
++    
++    //done
++    // TODO: reverse() function
++    // reverse the elements in the list
++    void reverse();
++    
++    //declared
++    // TODO: operator+=
++    // The result of "sl += sl" is undefined.
++    StrList& operator+=(const StrList& list);
++    
++    
++    // TODO: operator+
++    
++    
++    // TODO: operator<<
++    // Prints the content of the given list in the following
++    // format:
++    //
++    //     { one two three }
++    //
++    // assuming you had the three strings ("one", "two", "three")
++    // in the list.
++    
++    
++    // TODO: operator[]
++    // This function takes O(n) time.
++    // The result of accessing beyond the last element is undefined.
++    
++    
++    // TODO: operator[] const
++    // This function takes O(n) time.
++    // The result of accessing beyond the last element is undefined.
++    
++    
++    
++private:
++    
++    // This class contains the old C list structure as its single
++    // data member.  Do NOT add any data member.
++    
++    struct List list;
+ };
+ 
+ #endif
+-- 
+1.7.9.5
+
+
+From cf80bc3f40a44f93e96921a586826b430e8e0699 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 2 May 2015 02:39:36 -0400
+Subject: [PATCH 02/10] finished part 1, no valgrind testing yet
+
+---
+ part1/strlist.cpp |   89 ++++++++++++++++++++++++++++++++++++++++-------------
+ part1/strlist.h   |   19 +++++++++---
+ 2 files changed, 82 insertions(+), 26 deletions(-)
+
+diff --git a/part1/strlist.cpp b/part1/strlist.cpp
+index da6f52a..137918d 100644
+--- a/part1/strlist.cpp
++++ b/part1/strlist.cpp
+@@ -10,13 +10,6 @@
+ #include "mystring.h"
+ #include "mylist.h"
+ 
+-//die
+-
+-static void die(const char *message)
+-{
+-    perror(message);
+-    exit(1);
+-}
+ 
+ static void deleteString(void *s)
+ {
+@@ -25,18 +18,19 @@ static void deleteString(void *s)
+ }
+ 
+ static void appendList(struct List *target, struct List *source) {
+-    reverseList(target);
++    reverseList(target);    //reverse so we can add to the front
++    //without messing up the ordering
+     
+     struct Node *sourceNode = source->head;
+     while(sourceNode) {
+         MyString *sourceString = (MyString *)sourceNode->data;
+         MyString *targetString = new MyString(*sourceString);
+-        ::addFront(target, targetString);
++        addFront(target, targetString);
+         
+         sourceNode = sourceNode->next;
+     }
+     
+-    reverseList(target);
++    reverseList(target);    //
+ }
+ 
+ // default constructor
+@@ -56,20 +50,37 @@ StrList::~StrList()
+ 
+ StrList::StrList(const StrList& myList)
+ {
+-    initList(&this->list);     //initialize copied list
++    initList(&this->list);     //initialize target list
+     
+     appendList(&this->list, (List *)&myList.list);
+     
+ }
+ 
++// assignment operator
++StrList& StrList::operator=(const StrList& rhs)
++{
++    // check for self-assignment
++    if (this == &rhs) {
++        return *this;
++    }
++    
++    // remove everything I used to have
++    traverseList(&this->list, &deleteString);
++    removeAllNodes(&this->list);
++    
++    // copy things over from rhs
++    appendList(&this->list, (List *)&rhs.list);
++    return *this;
++}
++
+ // returns the number of nodes in the list
+ 
+-int StrList::size(const StrList& myList) {
++int StrList::size() const {
+     
+     int size = 0;
+     
+-    struct Node *currentNode = myList.list.head;
+-    while (currentNode != NULL) {
++    struct Node *currentNode = this->list.head;
++    while (currentNode) {
+         ++size;
+         currentNode = currentNode->next;
+     }
+@@ -79,10 +90,9 @@ int StrList::size(const StrList& myList) {
+ 
+ // adds a string to the front of the list
+ 
+-void StrList::addFront(MyString str) {
+-    
+-    //::addFront(&this->list, (void *)str);
+-
++void StrList::addFront(const MyString& str) {
++    MyString *listStr = new MyString(str);
++    ::addFront(&this->list, listStr);
+ }
+ 
+ // Pops a string from the front of the list and returns it.
+@@ -94,8 +104,10 @@ void StrList::addFront(MyString str) {
+ 
+ MyString StrList::popFront() {
+     
+-    return MyString((char *)::popFront(&this->list));
+-    
++    MyString *popped = (MyString *)::popFront(&this->list);
++    MyString returnStr(*popped);
++    delete popped;
++    return returnStr;
+ }
+ 
+ 
+@@ -111,10 +123,45 @@ void StrList::reverse() {
+ // operator+=
+ // The result of "sl += sl" is undefined.
+ StrList& StrList::operator+=(const StrList& list) {
++    appendList(&this->list, (List *)&list.list);
++    return *this;
++}
++
++
++//operator+
++StrList operator+(const StrList& list1, const StrList& list2) {
++    StrList resultList;
++    appendList(&resultList.list, (List *)&list1);
++    appendList(&resultList.list, (List *)&list2);
++    return resultList;
++}
++
++//operator<<
++ostream& operator<<(ostream& os, const StrList& list) {
++    os << "{"; //open brace
+     
+-    
++    struct Node *currentNode = list.list.head;
++    while(currentNode) {
++        os << *(MyString *)currentNode->data << " ";
++        currentNode = currentNode->next;
++    }
++    os << "}";
++    return os;
+ }
+ 
++// operator[]:
++// The result of accessing beyond the last element is undefined.
++MyString& StrList::operator[](int idx)
++{
++    struct Node *node = list.head;
++    for (int i = 0; i < idx; i++)
++        node = node->next;
++    return *(MyString *)node->data;
++}
++
++
++
++
+ 
+ 
+ 
+diff --git a/part1/strlist.h b/part1/strlist.h
+index c5d3b6c..d5e06e8 100644
+--- a/part1/strlist.h
++++ b/part1/strlist.h
+@@ -71,7 +71,7 @@ public:
+     //done
+     // TODO: size() function
+     // returns the number of nodes in the list
+-    int size(const StrList& myList);
++    int size() const;
+     
+     
+     //declared
+@@ -83,7 +83,7 @@ public:
+      you're writing) you have to append "::" in front, as in
+      "::addFront(&list, ......)".
+      */
+-    void addFront(MyString str);
++    void addFront(const MyString& str);
+     
+     
+     //done
+@@ -98,15 +98,20 @@ public:
+     // reverse the elements in the list
+     void reverse();
+     
+-    //declared
++    //done
+     // TODO: operator+=
+     // The result of "sl += sl" is undefined.
+     StrList& operator+=(const StrList& list);
+     
+-    
++    //done (possible errors?)
+     // TODO: operator+
++    friend StrList operator+(const StrList& list1, const StrList& list2);
+     
++    // assignment operator
++    StrList& operator=(const StrList& list);
+     
++    
++    //done
+     // TODO: operator<<
+     // Prints the content of the given list in the following
+     // format:
+@@ -115,16 +120,20 @@ public:
+     //
+     // assuming you had the three strings ("one", "two", "three")
+     // in the list.
++    friend ostream& operator<<(ostream& os, const StrList& list);
+     
+     
+     // TODO: operator[]
+     // This function takes O(n) time.
+     // The result of accessing beyond the last element is undefined.
+-    
++    MyString& operator[](int idx);
+     
+     // TODO: operator[] const
+     // This function takes O(n) time.
+     // The result of accessing beyond the last element is undefined.
++    const MyString& operator[](int idx) const {
++        return ((StrList&)*this)[idx];
++    }
+     
+     
+     
+-- 
+1.7.9.5
+
+
+From 13f91f65d6eca71ec7de247e67a6da35c5300024 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 3 May 2015 18:43:05 -0400
+Subject: [PATCH 03/10] Finished Part 1
+
+---
+ part1/Makefile     |    8 ++
+ part1/mystring.cpp |  205 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ part1/mystring.h   |   79 ++++++++++++++++++++
+ part1/strlist.cpp  |   33 ++++-----
+ 4 files changed, 308 insertions(+), 17 deletions(-)
+ create mode 100644 part1/mystring.cpp
+ create mode 100644 part1/mystring.h
+
+diff --git a/part1/Makefile b/part1/Makefile
+index 2b1ebaa..9b7ca06 100644
+--- a/part1/Makefile
++++ b/part1/Makefile
+@@ -25,3 +25,11 @@ clean:
+ 
+ .PHONY: all
+ all: clean default
++
++
++
++.PHONY: valgrind
++valgrind: 
++	echo valgirnd test:
++	valgrind --leak-check=yes ./strlist-test
++
+diff --git a/part1/mystring.cpp b/part1/mystring.cpp
+new file mode 100644
+index 0000000..3190e31
+--- /dev/null
++++ b/part1/mystring.cpp
+@@ -0,0 +1,205 @@
++//
++//  mystring.cpp
++//  lab9
++//
++//  Created by Josh Fram on 4/29/15.
++//  Copyright (c) 2015 JoshFram. All rights reserved.
++//
++
++#include "mystring.h"
++
++
++
++/*
++ * mystring.cpp
++ */
++
++#include <cstring>
++#include <cstdio>
++
++#include "mystring.h"
++
++// default constructor
++
++MyString::MyString()
++{
++#ifdef BASIC4TRACE
++    fprintf(stderr, "BASIC4TRACE: (%p)->MyString()\n", this);
++#endif
++    
++    data = new char[1];
++    data[0] = '\0';
++    
++    len = 0;
++}
++
++// constructor
++
++MyString::MyString(const char* p)
++{
++#ifdef BASIC4TRACE
++    fprintf(stderr, "BASIC4TRACE: (%p)->MyString(const char *)\n", this);
++#endif
++    
++    if (p) {
++        len = strlen(p);
++        data = new char[len+1];
++        strcpy(data, p);
++    } else {
++        data = new char[1];
++        data[0] = '\0';
++        len = 0;
++    }
++}
++
++// destructor
++
++MyString::~MyString()
++{
++#ifdef BASIC4TRACE
++    fprintf(stderr, "BASIC4TRACE: (%p)->~MyString()\n", this);
++#endif
++    
++    delete[] data;
++}
++
++// copy constructor
++
++MyString::MyString(const MyString& s)
++{
++#ifdef BASIC4TRACE
++    fprintf(stderr, "BASIC4TRACE: (%p)->MyString(const MyString&)\n", this);
++#endif
++    
++    len = s.len;
++    
++    data = new char[len+1];
++    strcpy(data, s.data);
++}
++
++// copy assignment
++
++MyString& MyString::operator=(const MyString& rhs)
++{
++#ifdef BASIC4TRACE
++    fprintf(stderr, "BASIC4TRACE: (%p)->op=(const MyString&)\n", this);
++#endif
++    
++    if (this == &rhs) {
++        return *this;
++    }
++    
++    // first, deallocate memory that 'this' used to hold
++    
++    delete[] data;
++    
++    // now copy from rhs
++    
++    len = rhs.len;
++    
++    data = new char[len+1];
++    strcpy(data, rhs.data);
++    
++    return *this;
++}
++
++// operator+
++
++MyString operator+(const MyString& s1, const MyString& s2)
++{
++#ifdef BASIC4TRACE
++    fprintf(stderr,
++            "BASIC4TRACE: op+(const MyString&, const MyString&)\n");
++#endif
++    
++    /*
++     MyString temp;
++     
++     delete[] temp.data;
++     
++     temp.len = s1.len + s2.len;
++     
++     temp.data = new char[temp.len+1];
++     strcpy(temp.data, s1.data);
++     strcat(temp.data, s2.data);
++     
++     return temp;
++     */
++    
++    // alternate implementation using op+=()
++    MyString temp(s1);
++    temp += s2;
++    return temp;
++}
++
++// put-to operator
++
++ostream& operator<<(ostream& os, const MyString& s)
++{
++    os << s.data;
++    return os;
++}
++
++// get-from operator
++
++istream& operator>>(istream& is, MyString& s)
++{
++    // this is kinda cheating, but this is just to illustrate how this
++    // function can work.
++    
++    string temp;
++    is >> temp;
++    
++    delete[] s.data;
++    
++    s.len = strlen(temp.c_str());
++    s.data = new char[s.len+1];
++    strcpy(s.data, temp.c_str());
++    
++    return is;
++}
++
++// operator[] - in real life this function should be declared inline
++
++char& MyString::operator[](int i)
++{
++    return data[i];
++}
++
++// operator[] const - in real life this should be inline
++
++const char& MyString::operator[](int i) const
++{
++    // illustration of casting away constness
++    return ((MyString&)*this)[i];
++}
++
++// relational operators
++
++int operator<(const MyString& s1, const MyString& s2)
++{
++    return strcmp(s1.data, s2.data) < 0;
++}
++
++int operator>(const MyString& s1, const MyString& s2)
++{
++    return strcmp(s1.data, s2.data) > 0;
++}
++
++int operator==(const MyString& s1, const MyString& s2)
++{
++    return strcmp(s1.data, s2.data) == 0;
++}
++
++// operator+=()
++
++MyString& MyString::operator+=(const MyString& s)
++{
++    len += s.len;
++    char *p = new char[len+1];
++    strcpy(p, data);
++    strcat(p, s.data);
++    delete [] data;
++    data = p;
++    return *this;
++}
+diff --git a/part1/mystring.h b/part1/mystring.h
+new file mode 100644
+index 0000000..5dd9a01
+--- /dev/null
++++ b/part1/mystring.h
+@@ -0,0 +1,79 @@
++#ifndef __MYSTRING_H__
++#define __MYSTRING_H__
++
++#include <iostream>
++
++using namespace std;
++
++class MyString {
++    
++public:
++    
++    // default constructor
++    MyString();
++    
++    // constructor
++    MyString(const char* p);
++    
++    // destructor
++    ~MyString();
++    
++    // copy constructor
++    MyString(const MyString& s);
++    
++    // copy assignment
++    MyString& operator=(const MyString& s);
++    
++    // returns the length of the string
++    int length() const { return len; }
++    
++    // operator+ (unfriended, removed from class def)
++    //friend MyString operator+(const MyString& s1, const MyString& s2);
++    
++    // operator+=
++    MyString& operator+=(const MyString& s);
++    
++    // operator<
++    friend int operator<(const MyString& s1, const MyString& s2);
++    
++    // operator>
++    //friend bool operator>(const MyString& s1, const MyString& s2);
++    
++    // operator>
++    friend int operator>(const MyString& s1, const MyString& s2);
++    
++    // operator++
++    friend int operator==(const MyString& s1, const MyString& s2);
++    
++    // operator!=
++    friend int operator!=(const MyString& s1, const MyString& s2);
++    
++    // operator<=
++    friend int operator<=(const MyString& s1, const MyString& s2);
++    
++    // operator>=
++    friend int operator>=(const MyString& s1, const MyString& s2);
++    
++    // put-to operator
++    friend ostream& operator<<(ostream& os, const MyString& s);
++    
++    // get-from operator
++    friend istream& operator>>(istream& is, MyString& s);
++    
++    // operator[]
++    char& operator[](int i);
++    
++    // operator[] const
++    const char& operator[](int i) const;
++    
++private:
++    
++    char* data;
++    
++    int len;
++};
++
++//oerator+ unfriended
++MyString operator+(const MyString& s1, const MyString& s2);
++
++#endif
+diff --git a/part1/strlist.cpp b/part1/strlist.cpp
+index 137918d..4b871a4 100644
+--- a/part1/strlist.cpp
++++ b/part1/strlist.cpp
+@@ -1,9 +1,6 @@
+ //
+ //  strlist.cpp
+-//  lab9
+-//
+-//  Created by Josh Fram on 4/29/15.
+-//  Copyright (c) 2015 JoshFram. All rights reserved.
++//  lab10
+ //
+ 
+ #include "strlist.h"
+@@ -11,8 +8,7 @@
+ #include "mylist.h"
+ 
+ 
+-static void deleteString(void *s)
+-{
++static void deleteString(void *s) {
+     MyString *str = (MyString *)s;
+     delete str;
+ }
+@@ -25,8 +21,9 @@ static void appendList(struct List *target, struct List *source) {
+     while(sourceNode) {
+         MyString *sourceString = (MyString *)sourceNode->data;
+         MyString *targetString = new MyString(*sourceString);
+-        addFront(target, targetString);
+-        
++        if(addFront(target, targetString) == NULL) {
++            exit(1);
++        }
+         sourceNode = sourceNode->next;
+     }
+     
+@@ -37,13 +34,14 @@ static void appendList(struct List *target, struct List *source) {
+ 
+ StrList::StrList()
+ {
+-    initList(&list);
++    initList(&this->list);
+ }
+ 
+ // destructor
+ StrList::~StrList()
+ {
+-    traverseList(&list, &deleteString);
++    traverseList(&this->list, &deleteString);
++    removeAllNodes(&this->list);
+ }
+ 
+ // copy constructor
+@@ -91,15 +89,15 @@ int StrList::size() const {
+ // adds a string to the front of the list
+ 
+ void StrList::addFront(const MyString& str) {
+-    MyString *listStr = new MyString(str);
+-    ::addFront(&this->list, listStr);
++    MyString *newStr = new MyString(str);
++    if (::addFront(&list, newStr) == NULL)
++        exit(1);
+ }
+ 
+ // Pops a string from the front of the list and returns it.
+ // The result of popping from an empty list is undefined.
+ //
+ //this popFront()'s from myList.list (this->list)
+-//then casts the returned void* as a char*
+ //then constructs a MyString object, which is returned
+ 
+ MyString StrList::popFront() {
+@@ -151,11 +149,12 @@ ostream& operator<<(ostream& os, const StrList& list) {
+ 
+ // operator[]:
+ // The result of accessing beyond the last element is undefined.
+-MyString& StrList::operator[](int idx)
+-{
+-    struct Node *node = list.head;
+-    for (int i = 0; i < idx; i++)
++MyString& StrList::operator[](int idx) {
++    
++    struct Node *node = this->list.head;
++    for (int i = 0; i < idx; i++) {
+         node = node->next;
++    }
+     return *(MyString *)node->data;
+ }
+ 
+-- 
+1.7.9.5
+
+
+From f951d819e59889f892e5eb53f8acb62efda2f616 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 3 May 2015 22:48:35 -0400
+Subject: [PATCH 04/10] Part 2 no memory leaks
+
+---
+ part2/Makefile |    7 ++++
+ part2/tlist.h  |   99 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 106 insertions(+)
+ create mode 100644 part2/tlist.h
+
+diff --git a/part2/Makefile b/part2/Makefile
+index 3e0ec75..618e0c3 100644
+--- a/part2/Makefile
++++ b/part2/Makefile
+@@ -23,3 +23,10 @@ clean:
+ 
+ .PHONY: all
+ all: clean default
++
++
++.PHONY: valgrind
++valgrind: 
++	echo valgirnd test:
++	valgrind --leak-check=yes ./strlist-test
++
+diff --git a/part2/tlist.h b/part2/tlist.h
+new file mode 100644
+index 0000000..da91eb5
+--- /dev/null
++++ b/part2/tlist.h
+@@ -0,0 +1,99 @@
++
++
++#include <string>
++#include <list>     //we use the "list" container from the standard C++ library.
++#include <algorithm>
++#include <iostream>
++
++using namespace std;
++
++template <typename T>
++class TList;
++template <typename T>
++TList<T> operator+(const TList<T>& lhs, const TList<T>& rhs);
++template <typename T>
++ostream& operator<<(ostream& os, const TList<T>& rhs);
++
++
++template <typename T>
++class TList
++{
++public:
++    
++    //compiler basic 4 ok
++    
++    
++    //member functions
++    int isEmpty() const {return list.list::empty();}
++    
++    int size() const {return list.list::size();}
++    
++    void addFront(const T& t) {
++        list.list::push_front(t);
++    }
++    
++    T popFront() {
++        T t(list.list::front());
++        list.list::pop_front();
++        return t;
++    }
++    
++    void reverse() {
++        ::reverse(list.list::begin(), list.list::end());
++    }
++    
++    
++    //operators
++    TList<T>& operator+=(const TList<T>& rhs);
++    
++    friend ostream& operator<< <T>(ostream& os, const TList<T>& rhs);
++    friend TList<T> (::operator+<T>)(const TList<T>& lhs, const TList<T>& rhs);
++    
++    T& operator[](int idx);
++    
++    const T& operator[](int idx) const {
++        return ((TList<T>&)*this)[idx];
++    }
++    
++private:
++    list<T> list;
++    
++    
++};
++
++
++template <typename T>
++TList<T>& TList<T>::operator+=(const TList<T>& rhs)
++{
++    for (auto i = rhs.list.list::begin(); i != rhs.list.list::end(); ++i)
++        list.list::push_back(*i);
++    return *this;
++}
++
++template <typename T>
++TList<T> operator+(const TList<T>& list1, const TList<T>& list2)
++{
++    TList<T> t(list1);
++    t += list2;
++    return t;
++}
++
++template <typename T>
++ostream& operator<<(ostream& os, const TList<T>& rhs)
++{
++    os << "{ ";
++    for (auto i = rhs.list.list::begin(); i != rhs.list.list::end(); ++i)
++        os << *i << " ";
++    os << "}";
++    return os;
++}
++
++template <typename T>
++T& TList<T>::operator[](int idx)
++{
++    auto iter = list.list::begin();
++    for (int i = 0; i < idx; i++)
++        ++iter;
++    return *iter;
++}
++
+-- 
+1.7.9.5
+
+
+From 2bbf57950043b461e7bb3f33d9d5d3e4a3101a33 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 4 May 2015 00:13:21 -0400
+Subject: [PATCH 05/10] Cleaned up part 2
+
+---
+ part2/tlist.h |   95 +++++++++++++++++++++++++++++----------------------------
+ 1 file changed, 49 insertions(+), 46 deletions(-)
+
+diff --git a/part2/tlist.h b/part2/tlist.h
+index da91eb5..542acde 100644
+--- a/part2/tlist.h
++++ b/part2/tlist.h
+@@ -7,12 +7,29 @@
+ 
+ using namespace std;
+ 
++//class template definition
+ template <typename T>
+ class TList;
++
++//template function definition
+ template <typename T>
+-TList<T> operator+(const TList<T>& lhs, const TList<T>& rhs);
++TList<T> operator+(const TList<T>& list1, const TList<T>& list2)
++{
++    TList<T> t(list1);
++    t += list2;
++    return t;
++}
++
++//template function definition
+ template <typename T>
+-ostream& operator<<(ostream& os, const TList<T>& rhs);
++ostream& operator<<(ostream& os, const TList<T>& rhs)
++{
++    os << "{ ";
++    for (auto i = rhs.list.list::begin(); i != rhs.list.list::end(); ++i)
++        os << *i << " ";
++    os << "}";
++    return os;
++}
+ 
+ 
+ template <typename T>
+@@ -24,76 +41,62 @@ public:
+     
+     
+     //member functions
+-    int isEmpty() const {return list.list::empty();}
++    int isEmpty() const {
++        return this->list.list::empty();
++    }
+     
+-    int size() const {return list.list::size();}
++    int size() const {
++        return this->list.list::size();
++    }
+     
+     void addFront(const T& t) {
+-        list.list::push_front(t);
++        this->list.list::push_front(t);
+     }
+     
+     T popFront() {
+-        T t(list.list::front());
+-        list.list::pop_front();
++        T t(this->list.list::front());
++        this->list.list::pop_front();
+         return t;
+     }
+     
+     void reverse() {
+-        ::reverse(list.list::begin(), list.list::end());
++        this->list.list::reverse();
+     }
+     
+-    
+     //operators
+-    TList<T>& operator+=(const TList<T>& rhs);
++    TList<T>& operator+=(const TList<T>& rhs) {
++        for (auto i = rhs.list.list::begin(); i != rhs.list.list::end(); ++i)
++            list.list::push_back(*i);
++        return *this;
++    }
+     
++    //defined above
+     friend ostream& operator<< <T>(ostream& os, const TList<T>& rhs);
+-    friend TList<T> (::operator+<T>)(const TList<T>& lhs, const TList<T>& rhs);
+     
+-    T& operator[](int idx);
++    //defined above
++    friend TList<T> operator+ <T>(const TList<T>& lhs, const TList<T>& rhs);
++    
++    T& operator[](int idx) {
++        auto iter = this->list.list::begin();
++        for (int i = 0; i < idx; i++)
++            ++iter;
++        return *iter;
++    }
+     
+     const T& operator[](int idx) const {
+-        return ((TList<T>&)*this)[idx];
++        return ((TList&)*this)[idx];
+     }
+     
+ private:
+     list<T> list;
+-    
+-    
++
+ };
+ 
+ 
+-template <typename T>
+-TList<T>& TList<T>::operator+=(const TList<T>& rhs)
+-{
+-    for (auto i = rhs.list.list::begin(); i != rhs.list.list::end(); ++i)
+-        list.list::push_back(*i);
+-    return *this;
+-}
+ 
+-template <typename T>
+-TList<T> operator+(const TList<T>& list1, const TList<T>& list2)
+-{
+-    TList<T> t(list1);
+-    t += list2;
+-    return t;
+-}
+ 
+-template <typename T>
+-ostream& operator<<(ostream& os, const TList<T>& rhs)
+-{
+-    os << "{ ";
+-    for (auto i = rhs.list.list::begin(); i != rhs.list.list::end(); ++i)
+-        os << *i << " ";
+-    os << "}";
+-    return os;
+-}
+ 
+-template <typename T>
+-T& TList<T>::operator[](int idx)
+-{
+-    auto iter = list.list::begin();
+-    for (int i = 0; i < idx; i++)
+-        ++iter;
+-    return *iter;
+-}
++
++
++
+ 
+-- 
+1.7.9.5
+
+
+From 20b104dcaae909d7efb455a23d45ddd9d1132401 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 4 May 2015 00:42:06 -0400
+Subject: [PATCH 06/10] Finished part3 with deque
+
+---
+ part3/tlist.h |  100 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 100 insertions(+)
+ create mode 100644 part3/tlist.h
+
+diff --git a/part3/tlist.h b/part3/tlist.h
+new file mode 100644
+index 0000000..bae01ae
+--- /dev/null
++++ b/part3/tlist.h
+@@ -0,0 +1,100 @@
++
++
++#include <string>
++#include <deque>     //we use the "deque" container from the standard C++ library.
++#include <algorithm>
++#include <iostream>
++
++using namespace std;
++
++template <typename T>
++class TList;
++
++
++//template function definition
++template <typename T>
++TList<T> operator+(const TList<T>& list1, const TList<T>& list2)
++{
++    TList<T> t(list1);
++    t += list2;
++    return t;
++}
++
++//template function definition
++template <typename T>
++ostream& operator<<(ostream& os, const TList<T>& rhs)
++{
++    os << "{ ";
++    for (auto i = rhs.list.deque::begin(); i != rhs.list.deque::end(); ++i)
++        os << *i << " ";
++    os << "}";
++    return os;
++}
++
++
++template <typename T>
++class TList
++{
++public:
++    
++    //compiler basic 4 ok
++    
++    
++    //member functions
++    int isEmpty() const {
++        return this->list.list::empty();
++    }
++    
++    int size() const {
++        return this->list.deque::size();
++    }
++    
++    void addFront(const T& t) {
++        this->list.deque::push_front(t);
++    }
++    
++    T popFront() {
++        T t(this->list.deque::front());
++        this->list.deque::pop_front();
++        return t;
++    }
++    
++    void reverse() {
++        ::reverse(list.begin(), list.end());
++    }
++    
++    //operators
++    TList<T>& operator+=(const TList<T>& rhs) {
++        for (auto i = rhs.list.deque::begin(); i != rhs.list.deque::end(); ++i)
++            list.deque::push_back(*i);
++        return *this;
++    }
++    
++    friend ostream& operator<< <T>(ostream& os, const TList<T>& rhs);
++    
++    friend TList<T> (::operator+<T>)(const TList<T>& lhs, const TList<T>& rhs);
++    
++    T& operator[](int idx) {
++        auto iter = list.deque::begin();
++        for (int i = 0; i < idx; i++)
++            ++iter;
++        return *iter;
++    }
++    
++    const T& operator[](int idx) const {
++        return ((TList&)*this)[idx];
++    }
++    
++private:
++    deque<T> list;
++    
++};
++
++
++
++
++
++
++
++
++
+-- 
+1.7.9.5
+
+
+From 94e6f19322dfb073ad39737fda9089278af79414 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 4 May 2015 00:46:21 -0400
+Subject: [PATCH 07/10] commited README
+
+---
+ README.txt    |   19 ++++++++-----------
+ part2/tlist.h |    4 ++--
+ 2 files changed, 10 insertions(+), 13 deletions(-)
+
+diff --git a/README.txt b/README.txt
+index 66dfd3e..339a8cb 100644
+--- a/README.txt
++++ b/README.txt
+@@ -1,11 +1,8 @@
+-This file should contain:
+-
+-  - your name
+-  - your UNI
+-  - lab assignment number
+-  - description for each part
+-  
+-The description should indicate whether your solution for the part is
+-working or not.  You may also want to include anything else you would
+-like to communicate to the grader such as extra functionalities you
+-implemented or how you tried to fix your non-working code.
++
++  - Josh Fram
++  - jpf2141
++  - lab10 (!)
++
++
++
++  This lab works exactly as specified in the instructions
+diff --git a/part2/tlist.h b/part2/tlist.h
+index 542acde..cac5e3f 100644
+--- a/part2/tlist.h
++++ b/part2/tlist.h
+@@ -11,7 +11,7 @@ using namespace std;
+ template <typename T>
+ class TList;
+ 
+-//template function definition
++//template friend function definition
+ template <typename T>
+ TList<T> operator+(const TList<T>& list1, const TList<T>& list2)
+ {
+@@ -20,7 +20,7 @@ TList<T> operator+(const TList<T>& list1, const TList<T>& list2)
+     return t;
+ }
+ 
+-//template function definition
++//template friend function definition
+ template <typename T>
+ ostream& operator<<(ostream& os, const TList<T>& rhs)
+ {
+-- 
+1.7.9.5
+
+
+From aa510296447f40fed98c26bc9455c7e0fb3e764b Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 4 May 2015 21:33:22 -0400
+Subject: [PATCH 08/10] commented basic 4 from email, etc
+
+---
+ part1/strlist.cpp |   19 ++++++++-----------
+ part2/tlist.h     |    8 ++++----
+ 2 files changed, 12 insertions(+), 15 deletions(-)
+
+diff --git a/part1/strlist.cpp b/part1/strlist.cpp
+index 4b871a4..3f8a763 100644
+--- a/part1/strlist.cpp
++++ b/part1/strlist.cpp
+@@ -9,8 +9,7 @@
+ 
+ 
+ static void deleteString(void *s) {
+-    MyString *str = (MyString *)s;
+-    delete str;
++     delete (MyString *)s;
+ }
+ 
+ static void appendList(struct List *target, struct List *source) {
+@@ -18,12 +17,11 @@ static void appendList(struct List *target, struct List *source) {
+     //without messing up the ordering
+     
+     struct Node *sourceNode = source->head;
++
++
+     while(sourceNode) {
+-        MyString *sourceString = (MyString *)sourceNode->data;
+-        MyString *targetString = new MyString(*sourceString);
+-        if(addFront(target, targetString) == NULL) {
+-            exit(1);
+-        }
++        MyString *targetString = new MyString(*(MyString *)sourceNode->data);
++        ::addFront(target, targetString);
+         sourceNode = sourceNode->next;
+     }
+     
+@@ -57,16 +55,15 @@ StrList::StrList(const StrList& myList)
+ // assignment operator
+ StrList& StrList::operator=(const StrList& rhs)
+ {
+-    // check for self-assignment
+     if (this == &rhs) {
+         return *this;
+     }
+     
+-    // remove everything I used to have
++    // remove old nodes
+     traverseList(&this->list, &deleteString);
+     removeAllNodes(&this->list);
+     
+-    // copy things over from rhs
++    // copy 
+     appendList(&this->list, (List *)&rhs.list);
+     return *this;
+ }
+@@ -138,7 +135,7 @@ StrList operator+(const StrList& list1, const StrList& list2) {
+ ostream& operator<<(ostream& os, const StrList& list) {
+     os << "{"; //open brace
+     
+-    struct Node *currentNode = list.list.head;
++    struct Node *currentNode = this->list.list.head;
+     while(currentNode) {
+         os << *(MyString *)currentNode->data << " ";
+         currentNode = currentNode->next;
+diff --git a/part2/tlist.h b/part2/tlist.h
+index cac5e3f..0180ccb 100644
+--- a/part2/tlist.h
++++ b/part2/tlist.h
+@@ -66,7 +66,7 @@ public:
+     //operators
+     TList<T>& operator+=(const TList<T>& rhs) {
+         for (auto i = rhs.list.list::begin(); i != rhs.list.list::end(); ++i)
+-            list.list::push_back(*i);
++            this->list.list::push_back(*i);
+         return *this;
+     }
+     
+@@ -77,10 +77,10 @@ public:
+     friend TList<T> operator+ <T>(const TList<T>& lhs, const TList<T>& rhs);
+     
+     T& operator[](int idx) {
+-        auto iter = this->list.list::begin();
++        auto iterator = this->list.list::begin();
+         for (int i = 0; i < idx; i++)
+-            ++iter;
+-        return *iter;
++            ++iterator;
++        return *iterator;
+     }
+     
+     const T& operator[](int idx) const {
+-- 
+1.7.9.5
+
+
+From 2964b64e71fb6be1919640c3b6082aae1d025896 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 4 May 2015 21:35:56 -0400
+Subject: [PATCH 09/10] added this's, comments
+
+---
+ part3/tlist.h |   10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/part3/tlist.h b/part3/tlist.h
+index bae01ae..af8dfb2 100644
+--- a/part3/tlist.h
++++ b/part3/tlist.h
+@@ -60,13 +60,13 @@ public:
+     }
+     
+     void reverse() {
+-        ::reverse(list.begin(), list.end());
++        ::reverse(this->list.begin(), this->list.end());
+     }
+     
+     //operators
+     TList<T>& operator+=(const TList<T>& rhs) {
+         for (auto i = rhs.list.deque::begin(); i != rhs.list.deque::end(); ++i)
+-            list.deque::push_back(*i);
++            this->list.deque::push_back(*i);
+         return *this;
+     }
+     
+@@ -75,10 +75,10 @@ public:
+     friend TList<T> (::operator+<T>)(const TList<T>& lhs, const TList<T>& rhs);
+     
+     T& operator[](int idx) {
+-        auto iter = list.deque::begin();
++        auto iterator = list.deque::begin();
+         for (int i = 0; i < idx; i++)
+-            ++iter;
+-        return *iter;
++            ++iterator;
++        return *iterator;
+     }
+     
+     const T& operator[](int idx) const {
+-- 
+1.7.9.5
+
+
+From eaa73358c39470a271bca02d9fbea08b4846ae0f Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 4 May 2015 21:46:24 -0400
+Subject: [PATCH 10/10] messed up strlist.cpp
+
+---
+ part1/strlist.cpp |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/part1/strlist.cpp b/part1/strlist.cpp
+index 3f8a763..a4e04b2 100644
+--- a/part1/strlist.cpp
++++ b/part1/strlist.cpp
+@@ -87,7 +87,7 @@ int StrList::size() const {
+ 
+ void StrList::addFront(const MyString& str) {
+     MyString *newStr = new MyString(str);
+-    if (::addFront(&list, newStr) == NULL)
++    if (::addFront(&this->list, newStr) == NULL)
+         exit(1);
+ }
+ 
+@@ -135,7 +135,7 @@ StrList operator+(const StrList& list1, const StrList& list2) {
+ ostream& operator<<(ostream& os, const StrList& list) {
+     os << "{"; //open brace
+     
+-    struct Node *currentNode = this->list.list.head;
++    struct Node *currentNode = list.list.head;
+     while(currentNode) {
+         os << *(MyString *)currentNode->data << " ";
+         currentNode = currentNode->next;
+-- 
+1.7.9.5
+

@@ -1,0 +1,584 @@
+From b3be23db24e1f48dfc079c529773f95df6849bb4 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 22 Mar 2015 16:57:00 -0400
+Subject: [PATCH 01/10] Finished .sh File
+
+---
+ part1/mdb-lookup-server-nc-1.sh |   18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+ create mode 100755 part1/mdb-lookup-server-nc-1.sh
+
+diff --git a/part1/mdb-lookup-server-nc-1.sh b/part1/mdb-lookup-server-nc-1.sh
+new file mode 100755
+index 0000000..f6625c4
+--- /dev/null
++++ b/part1/mdb-lookup-server-nc-1.sh
+@@ -0,0 +1,18 @@
++#!/bin/sh
++
++
++on_ctrl_c() {
++echo "Ignoring Ctrl-C"
++}
++# Call on_ctrl_c() when the interrupt signal is received.
++# The interrupt signal is sent when you press Ctrl-C.
++trap on_ctrl_c INT
++
++
++mkfifo mypipe-$$
++cat mypipe-$$ | nc -l $1 | /home/jae/cs3157-pub/bin/mdb-lookup-cs3157 > mypipe-$$ 
++
++rm mypipe-$$
++
++
++
+-- 
+1.7.9.5
+
+
+From 3306f3a5755c305857895633b7b218b1efce88cc Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 22 Mar 2015 17:25:06 -0400
+Subject: [PATCH 02/10] Fixed name of .sh file, added skeleton lookup .c file
+ (part b)
+
+---
+ part1/mdb-lookup-server-nc.sh |   18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+ create mode 100755 part1/mdb-lookup-server-nc.sh
+
+diff --git a/part1/mdb-lookup-server-nc.sh b/part1/mdb-lookup-server-nc.sh
+new file mode 100755
+index 0000000..f6625c4
+--- /dev/null
++++ b/part1/mdb-lookup-server-nc.sh
+@@ -0,0 +1,18 @@
++#!/bin/sh
++
++
++on_ctrl_c() {
++echo "Ignoring Ctrl-C"
++}
++# Call on_ctrl_c() when the interrupt signal is received.
++# The interrupt signal is sent when you press Ctrl-C.
++trap on_ctrl_c INT
++
++
++mkfifo mypipe-$$
++cat mypipe-$$ | nc -l $1 | /home/jae/cs3157-pub/bin/mdb-lookup-cs3157 > mypipe-$$ 
++
++rm mypipe-$$
++
++
++
+-- 
+1.7.9.5
+
+
+From 1e9942c7e4fe130ed4da804ebb5d5f24f65ef72a Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 22 Mar 2015 17:27:54 -0400
+Subject: [PATCH 03/10] added Makefile
+
+---
+ part1/Makefile |   70 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 70 insertions(+)
+ create mode 100644 part1/Makefile
+
+diff --git a/part1/Makefile b/part1/Makefile
+new file mode 100644
+index 0000000..14ef6e7
+--- /dev/null
++++ b/part1/Makefile
+@@ -0,0 +1,70 @@
++# This Makefile should be used as a template for future Makefiles.
++# It’s heavily commented, so hopefully you can understand what each
++# line does.
++# We’ll use gcc for C compilation and g++ for C++ compilation
++CC = gcc
++CXX = g++
++# Let’s leave a place holder for additional include directories
++INCLUDES =   
++# Compilation options:
++# -g for debugging info and -Wall enables all warnings
++CFLAGS = -g -Wall $(INCLUDES)
++# CXXFLAGS = -g -Wall $(INCLUDES)
++# Linking options:
++# -g for debugging info
++LDFLAGS =  
++# List the libraries you need to link with in LDLIBS
++# For example, use "-lm" for the math library
++LDLIBS = 
++# The 1st target gets built when you type "make".
++# It’s usually your executable. ("main" in this case.)
++#
++# Note that we did not specify the linking rule.
++# Instead, we rely on one of make’s implicit rules:
++#
++# $(CC) $(LDFLAGS) <all-dependent-.o-files> $(LDLIBS)
++#
++# Also note that make assumes that main depends on main.o,
++# # so we can omit it if we want to.
++
++#mdb-lookup-server-nc-2: mdb-lookup-server-nc-2.o
++
++mdb-lookup-server-nc-1: mdb-lookup-server-nc-1.o
++
++# main.o depends not only on main.c, but also on myadd.h because
++# main.c includes myadd.h. main.o will get recompiled if either
++# main.c or myadd.h get modified.
++#
++# make already knows main.o depends on main.c, so we can omit main.c
++# in the dependency list if we want to.#
++# make uses the following implicit rule to compile a .c file into a .o
++# file:
++#
++# $(CC) -c $(CFLAGS) <the-.c-file>
++#
++#mdb-lookup-server-nc-2.o: mdb-lookup-server-nc-2.c 
++
++mdb-lookup-server-nc-1.o: mdb-lookup-server-nc-1.c
++
++
++
++# Always provide the "clean" target that removes intermediate files.
++# What you remove depend on your choice of coding tools
++# (different editors generate different backup files for example).
++
++#
++## And the "clean" target is not a file name, so we tell make that
++# it’s a "phony" target.
++.PHONY: clean
++clean:
++	rm -f *.o a.out core mdb-lookup-server-nc-2 mdb-lookup-server-nc-1
++#  # "all" target is useful if your Makefile builds multiple programs.
++# Here we’ll have it first do "clean", and rebuild the main target.
++.PHONY: default
++default: mdb-lookup-server-nc-2 mdb-lookup-server-nc-1
++
++
++
++.PHONY: valgrind
++valgrind: mdb
++	valgrind --leak-check=full --show-reachable=yes ./mdb-lookup my-mdb
+-- 
+1.7.9.5
+
+
+From 9c0d33c8ff15128d79662940f488e0dfa8e2df5b Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Fri, 27 Mar 2015 14:11:45 -0400
+Subject: [PATCH 04/10] tracked Makefile, mdb-lookup-2
+
+---
+ part1/Makefile                 |    6 ++---
+ part1/mdb-lookup-server-nc-2.c |   50 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 53 insertions(+), 3 deletions(-)
+ create mode 100644 part1/mdb-lookup-server-nc-2.c
+
+diff --git a/part1/Makefile b/part1/Makefile
+index 14ef6e7..e642925 100644
+--- a/part1/Makefile
++++ b/part1/Makefile
+@@ -27,9 +27,9 @@ LDLIBS =
+ # Also note that make assumes that main depends on main.o,
+ # # so we can omit it if we want to.
+ 
+-#mdb-lookup-server-nc-2: mdb-lookup-server-nc-2.o
++mdb-lookup-server-nc-2: mdb-lookup-server-nc-2.o
+ 
+-mdb-lookup-server-nc-1: mdb-lookup-server-nc-1.o
++#mdb-lookup-server-nc-1: mdb-lookup-server-nc-1.o
+ 
+ # main.o depends not only on main.c, but also on myadd.h because
+ # main.c includes myadd.h. main.o will get recompiled if either
+@@ -42,7 +42,7 @@ mdb-lookup-server-nc-1: mdb-lookup-server-nc-1.o
+ #
+ # $(CC) -c $(CFLAGS) <the-.c-file>
+ #
+-#mdb-lookup-server-nc-2.o: mdb-lookup-server-nc-2.c 
++mdb-lookup-server-nc-2.o: mdb-lookup-server-nc-2.c 
+ 
+ mdb-lookup-server-nc-1.o: mdb-lookup-server-nc-1.c
+ 
+diff --git a/part1/mdb-lookup-server-nc-2.c b/part1/mdb-lookup-server-nc-2.c
+new file mode 100644
+index 0000000..cf39ab6
+--- /dev/null
++++ b/part1/mdb-lookup-server-nc-2.c
+@@ -0,0 +1,50 @@
++
++/*
++ * mdb-lookup-server-nc-1.c
++ */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <sys/wait.h>
++#include <sys/types.h>
++#include <unistd.h>
++
++static void die(const char *s)
++{
++    perror(s);
++    exit(1);
++}
++
++int main(int argc, char **argv)
++{
++    if (argc != 2) {
++	fprintf(stderr, "usage: %s <port>\n", argv[0]);
++	exit(1);
++    }
++
++        char input[1000];
++        printf("%s", "port number: ");
++        fflush(stdout);
++        pid_t pid = fork();
++        if (pid < 0) {
++	        die("fork failed");
++        } else if (pid == 0) {
++	        // child process
++	        fprintf(stderr, "[pid=%d] ", (int)getpid());
++	        fprintf(stderr, "mdb-lookup-server started on port %s\n", argv[1]);
++	        execl("./mdb-lookup-server-nc.sh", "mdb-lookup-server-nc.sh", 
++		        argv[1], (char *)0);
++	        die("execl failed");
++        } else {
++	        // parent process
++	        while(pid = waitpid((pid_t) -1 , NULL, WNOHANG) > 0) {
++                
++	                fprintf(stderr, "[pid=%d] ", (int)pid);
++	                fprintf(stderr, "mdb-lookup-server terminated\n");
++        
++                }
++        }
++
++        return 0;
++}
++
+-- 
+1.7.9.5
+
+
+From 4069a9d3469b28ddd63264e53d3b7a694ff9b8f7 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Fri, 27 Mar 2015 23:40:35 -0400
+Subject: [PATCH 05/10] Finished part c, added on_ctrl_c to .sh file
+
+---
+ part1/Makefile                 |    6 ++---
+ part1/mdb-lookup-server-nc-2.c |   57 ++++++++++++++++++++++++----------------
+ part1/mdb-lookup-server-nc.sh  |    5 ++--
+ 3 files changed, 39 insertions(+), 29 deletions(-)
+
+diff --git a/part1/Makefile b/part1/Makefile
+index e642925..2bb8ca7 100644
+--- a/part1/Makefile
++++ b/part1/Makefile
+@@ -57,7 +57,7 @@ mdb-lookup-server-nc-1.o: mdb-lookup-server-nc-1.c
+ # it’s a "phony" target.
+ .PHONY: clean
+ clean:
+-	rm -f *.o a.out core mdb-lookup-server-nc-2 mdb-lookup-server-nc-1
++	rm -f *.o a.out core mdb-lookup-server-nc-2 mdb-lookup-server-nc-1 mypipe*
+ #  # "all" target is useful if your Makefile builds multiple programs.
+ # Here we’ll have it first do "clean", and rebuild the main target.
+ .PHONY: default
+@@ -66,5 +66,5 @@ default: mdb-lookup-server-nc-2 mdb-lookup-server-nc-1
+ 
+ 
+ .PHONY: valgrind
+-valgrind: mdb
+-	valgrind --leak-check=full --show-reachable=yes ./mdb-lookup my-mdb
++valgrind: 
++	valgrind --leak-check=full --show-reachable=yes ./mdb-lookup-server-nc-2
+diff --git a/part1/mdb-lookup-server-nc-2.c b/part1/mdb-lookup-server-nc-2.c
+index cf39ab6..1a0295e 100644
+--- a/part1/mdb-lookup-server-nc-2.c
++++ b/part1/mdb-lookup-server-nc-2.c
+@@ -17,34 +17,45 @@ static void die(const char *s)
+ 
+ int main(int argc, char **argv)
+ {
+-    if (argc != 2) {
+-	fprintf(stderr, "usage: %s <port>\n", argv[0]);
+-	exit(1);
+-    }
+-
++        
+         char input[1000];
++        int testInput;
+         printf("%s", "port number: ");
+         fflush(stdout);
+-        pid_t pid = fork();
+-        if (pid < 0) {
+-	        die("fork failed");
+-        } else if (pid == 0) {
+-	        // child process
+-	        fprintf(stderr, "[pid=%d] ", (int)getpid());
+-	        fprintf(stderr, "mdb-lookup-server started on port %s\n", argv[1]);
+-	        execl("./mdb-lookup-server-nc.sh", "mdb-lookup-server-nc.sh", 
+-		        argv[1], (char *)0);
+-	        die("execl failed");
+-        } else {
+-	        // parent process
+-	        while(pid = waitpid((pid_t) -1 , NULL, WNOHANG) > 0) {
+-                
+-	                fprintf(stderr, "[pid=%d] ", (int)pid);
+-	                fprintf(stderr, "mdb-lookup-server terminated\n");
+-        
++
++        while(fgets(input, sizeof(input), stdin) != NULL) {
++
++                pid_t pid;      //declare pid
++                if((testInput = atoi(input) != 0)) { 
++                        pid = fork();
+                 }
+-        }
++                else {  //no input, dont fork, just check for terminated processes
++                        pid = (pid_t) 1;
++                }
++
++                if (pid < 0) {
++	                die("fork failed");
++                } else if (pid == 0) {
++                        //child process    
+ 
++                        fprintf(stderr, "[pid=%d] ", (int)getpid());
++	                fprintf(stderr, "mdb-lookup-server started on port %s\n", input);
++                        execl("./mdb-lookup-server-nc.sh", "mdb-lookup-server-nc.sh", 
++		                input , (char *)0);
++	                die("execl failed");
++                } else {
++	                // parent process
++	                sleep(1);
++                        while((pid = waitpid((pid_t) -1 , NULL, WNOHANG)) > 0) {
++
++	                        fprintf(stderr, "[pid=%d] ", (int)pid);
++	                        fprintf(stderr, "mdb-lookup-server terminated\n");
++                
++                        }
++                         
++                        printf("%s", "port number: ");
++                }       
++        }
+         return 0;
+ }
+ 
+diff --git a/part1/mdb-lookup-server-nc.sh b/part1/mdb-lookup-server-nc.sh
+index f6625c4..9b47e2f 100755
+--- a/part1/mdb-lookup-server-nc.sh
++++ b/part1/mdb-lookup-server-nc.sh
+@@ -1,14 +1,13 @@
+ #!/bin/sh
+-
+-
+ on_ctrl_c() {
+-echo "Ignoring Ctrl-C"
++     echo "Ignoring Ctrl-C"
+ }
+ # Call on_ctrl_c() when the interrupt signal is received.
+ # The interrupt signal is sent when you press Ctrl-C.
+ trap on_ctrl_c INT
+ 
+ 
++
+ mkfifo mypipe-$$
+ cat mypipe-$$ | nc -l $1 | /home/jae/cs3157-pub/bin/mdb-lookup-cs3157 > mypipe-$$ 
+ 
+-- 
+1.7.9.5
+
+
+From e6bd10612cdbcf0e73afd14064bf3894af72557c Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 28 Mar 2015 00:20:35 -0400
+Subject: [PATCH 06/10] Added README with part B answer
+
+---
+ README.txt |   30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
+ create mode 100644 README.txt
+
+diff --git a/README.txt b/README.txt
+new file mode 100644
+index 0000000..5935587
+--- /dev/null
++++ b/README.txt
+@@ -0,0 +1,30 @@
++Josh Fram
++jpf2141
++Lab 5
++
++My code works exactly as specified in the lab instructions.
++
++
++
++Part B) 
++Process Tree:
++
++shd: jpf2141 [priv]
++|   \_ sshd: jpf2141@pts/31
++|       \_ -bash
++|           \_ ./mdb-lookup-server-nc-1 1234
++|               \_ /bin/sh ./mdb-lookup-server-nc.sh 1234
++|                   \_ cat mypipe-13426
++|                   \_ nc -l 1234
++|                   \_ /bin/sh /home/jae/cs3157-pub/bin/mdb-lookup-cs3157
++|                       \_ /home/jae/cs3157-pub/bin/mdb-lookup /home/jae/cs3157-pub/bin/mdb-cs3157
++
++
++Shell Scripts:
++
++
++./mdb-lookup-server-nc.sh
++
++
++
++
+-- 
+1.7.9.5
+
+
+From 89cf34c077b27ac4bcdd4b8e0227d212a8450164 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 28 Mar 2015 21:14:41 -0400
+Subject: [PATCH 07/10] Fixed answer to part B in README
+
+---
+ README.txt |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/README.txt b/README.txt
+index 5935587..95cee75 100644
+--- a/README.txt
++++ b/README.txt
+@@ -3,7 +3,8 @@ jpf2141
+ Lab 5
+ 
+ My code works exactly as specified in the lab instructions.
+-
++  I use sleep(1) to ensure that the terminated children print before the
++  port number prompt is printed. 
+ 
+ 
+ Part B) 
+-- 
+1.7.9.5
+
+
+From 314a25aecfb2951016396bd152c6670a00e9bfc1 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 28 Mar 2015 21:30:11 -0400
+Subject: [PATCH 08/10] added forced remove of pipe to .sh file
+
+---
+ part1/mdb-lookup-server-nc.sh |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/part1/mdb-lookup-server-nc.sh b/part1/mdb-lookup-server-nc.sh
+index 9b47e2f..57db63e 100755
+--- a/part1/mdb-lookup-server-nc.sh
++++ b/part1/mdb-lookup-server-nc.sh
+@@ -11,7 +11,7 @@ trap on_ctrl_c INT
+ mkfifo mypipe-$$
+ cat mypipe-$$ | nc -l $1 | /home/jae/cs3157-pub/bin/mdb-lookup-cs3157 > mypipe-$$ 
+ 
+-rm mypipe-$$
++rm -f mypipe-$$
+ 
+ 
+ 
+-- 
+1.7.9.5
+
+
+From d85429f072f17746dc10d9b9e5cf336d54683c4f Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 28 Mar 2015 21:45:10 -0400
+Subject: [PATCH 09/10] final changes to README
+
+---
+ README.txt |   23 +++++++++++++----------
+ 1 file changed, 13 insertions(+), 10 deletions(-)
+
+diff --git a/README.txt b/README.txt
+index 95cee75..cc15f3a 100644
+--- a/README.txt
++++ b/README.txt
+@@ -10,20 +10,23 @@ My code works exactly as specified in the lab instructions.
+ Part B) 
+ Process Tree:
+ 
+-shd: jpf2141 [priv]
+-|   \_ sshd: jpf2141@pts/31
+-|       \_ -bash
+-|           \_ ./mdb-lookup-server-nc-1 1234
+-|               \_ /bin/sh ./mdb-lookup-server-nc.sh 1234
+-|                   \_ cat mypipe-13426
+-|                   \_ nc -l 1234
+-|                   \_ /bin/sh /home/jae/cs3157-pub/bin/mdb-lookup-cs3157
+-|                       \_ /home/jae/cs3157-pub/bin/mdb-lookup /home/jae/cs3157-pub/bin/mdb-cs3157
+ 
+ 
+-Shell Scripts:
++PPID   PID  PGID   SID TTY      TPGID STAT   UID   TIME COMMAND
++ 1011 21201 21201 21201 ?           -1 Ss       0   0:00  \_ sshd: jpf2141 [priv]
++21201  5501 21201 21201 ?           -1 S    16025   0:00  |   \_ sshd:jpf2141@pts/32
++ 5501  5661  5661  5661 pts/32   32077 Ss   16025   0:00  |       \_ -bash
++ 5661 32077 32077  5661 pts/32   32077 S+   16025   0:00  |           \_./mdb-lookup-server-nc-1 1111
++32077 32079 32077  5661 pts/32   32077 S+   16025   0:00  |               \_/bin/sh ./mdb-lookup-server-nc.sh 1111
++32079 32126 32077  5661 pts/32   32077 S+   16025   0:00  |                  \_ cat mypipe-32079
++32079 32127 32077  5661 pts/32   32077 S+   16025   0:00  |                  \_ nc -l 1111
++32079 32128 32077  5661 pts/32   32077 S+   16025   0:00  |                  \_ /bin/sh /home/jae/cs3157-pub/bin/mdb-lookup-cs3157
++32128 32132 32077  5661 pts/32   32077 S+   16025   0:00  |                      \_ /home/jae/cs3157-pub/bin/mdb-lookup /home/jae/cs3157-pub/bin/mdb-cs3157
++
+ 
+ 
++Shell Scripts:
++
+ ./mdb-lookup-server-nc.sh
+ 
+ 
+-- 
+1.7.9.5
+
+
+From 55be040091df054057b50c0c40f3cae41f7dfdf4 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 28 Mar 2015 21:50:25 -0400
+Subject: [PATCH 10/10] Removed extra shell script I added by accident
+
+---
+ part1/mdb-lookup-server-nc-1.sh |   18 ------------------
+ 1 file changed, 18 deletions(-)
+ delete mode 100755 part1/mdb-lookup-server-nc-1.sh
+
+diff --git a/part1/mdb-lookup-server-nc-1.sh b/part1/mdb-lookup-server-nc-1.sh
+deleted file mode 100755
+index f6625c4..0000000
+--- a/part1/mdb-lookup-server-nc-1.sh
++++ /dev/null
+@@ -1,18 +0,0 @@
+-#!/bin/sh
+-
+-
+-on_ctrl_c() {
+-echo "Ignoring Ctrl-C"
+-}
+-# Call on_ctrl_c() when the interrupt signal is received.
+-# The interrupt signal is sent when you press Ctrl-C.
+-trap on_ctrl_c INT
+-
+-
+-mkfifo mypipe-$$
+-cat mypipe-$$ | nc -l $1 | /home/jae/cs3157-pub/bin/mdb-lookup-cs3157 > mypipe-$$ 
+-
+-rm mypipe-$$
+-
+-
+-
+-- 
+1.7.9.5
+

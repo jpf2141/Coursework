@@ -1,0 +1,1317 @@
+From 93d523dc4fe4a2fdae557eb2473780772582b85d Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 9 Mar 2015 02:39:10 -0400
+Subject: [PATCH 01/15] First running version of program
+
+---
+ part1/Makefile |   64 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ part1/mdb.c    |   62 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ part1/mdb.h    |    3 +++
+ 3 files changed, 129 insertions(+)
+ create mode 100644 part1/Makefile
+ create mode 100644 part1/mdb.c
+
+diff --git a/part1/Makefile b/part1/Makefile
+new file mode 100644
+index 0000000..b9a822f
+--- /dev/null
++++ b/part1/Makefile
+@@ -0,0 +1,64 @@
++# This Makefile should be used as a template for future Makefiles.
++# It’s heavily commented, so hopefully you can understand what each
++# line does.
++# We’ll use gcc for C compilation and g++ for C++ compilation
++CC = gcc
++CXX = g++
++# Let’s leave a place holder for additional include directories
++INCLUDES = 
++# Compilation options:
++# -g for debugging info and -Wall enables all warnings
++CFLAGS = -g -Wall -I ../../lab3/solutions/part1 $(INCLUDES)
++# CXXFLAGS = -g -Wall $(INCLUDES)
++# Linking options:
++# -g for debugging info
++LDFLAGS =  
++# List the libraries you need to link with in LDLIBS
++# For example, use "-lm" for the math library
++LDLIBS = -L ../../lab3/solutions/part1 -lmylist
++# The 1st target gets built when you type "make".
++# It’s usually your executable. ("main" in this case.)
++#
++# Note that we did not specify the linking rule.
++# Instead, we rely on one of make’s implicit rules:
++#
++# $(CC) $(LDFLAGS) <all-dependent-.o-files> $(LDLIBS)
++#
++# Also note that make assumes that main depends on main.o,
++# # so we can omit it if we want to.
++mdb: mdb.o
++# main.o depends not only on main.c, but also on myadd.h because
++# main.c includes myadd.h. main.o will get recompiled if either
++# main.c or myadd.h get modified.
++#
++# make already knows main.o depends on main.c, so we can omit main.c
++# in the dependency list if we want to.#
++# make uses the following implicit rule to compile a .c file into a .o
++# file:
++#
++# $(CC) -c $(CFLAGS) <the-.c-file>
++#
++mdb.o: mdb.c mdb.h
++
++
++
++# Always provide the "clean" target that removes intermediate files.
++# What you remove depend on your choice of coding tools
++# (different editors generate different backup files for example).
++
++#
++## And the "clean" target is not a file name, so we tell make that
++# it’s a "phony" target.
++.PHONY: clean
++clean:
++	rm -f *.o a.out core mdb mdb-lookup
++#  # "all" target is useful if your Makefile builds multiple programs.
++# Here we’ll have it first do "clean", and rebuild the main target.
++.PHONY: all
++all: clean main
++
++
++
++.PHONY: valgrind
++valgrind: mylist
++	valgrind --leak-check=yes ./mdb-lookup
+diff --git a/part1/mdb.c b/part1/mdb.c
+new file mode 100644
+index 0000000..21c2212
+--- /dev/null
++++ b/part1/mdb.c
+@@ -0,0 +1,62 @@
++
++
++
++
++#include "mdb.h"
++
++
++void printStr(void *p) {
++        printf("%s\n", (char *)p);
++}
++
++
++void parseFile(FILE *fp, char *filename) {
++            
++        struct List list;
++        initList(&list);
++        struct Node *node; 
++        
++        char pTest[40];  
++        int size = fread(pTest, 40, 100, fp);   
++                            
++        int bufSize = 40*(int)size;
++        printf("size: %d, bufSize %d ", size, bufSize);
++        char buf[bufSize];                      
++                                                //to be used for the linked list
++        node = NULL;                            //declare first node to be null
++        
++        while(fread(buf,  sizeof(struct MdbRec), 1, fp) != 0) { //while the program is still reading successfully
++                node = addAfter(&list, node, buf);
++        }
++                                                                                                                   
++        traverseList(&list, &printStr);
++        
++        if(ferror(fp)) { 
++                perror(filename);
++                exit(1);        
++        } 
++
++        fclose(fp);
++}
++
++
++
++int main(int argc, char **argv) { 
++
++        if(argc != 2) { 
++                fprintf(stderr, "%s\n", "usage: mdb-lookup <file_name>");
++                exit(1);
++        }
++
++        char *filename = argv[1];
++        FILE *fp = fopen(filename, "rb");
++        if(fp == NULL) { 
++                perror(filename);
++                exit(1);
++        }
++
++        parseFile(fp, filename);
++
++        return 0;
++
++}
+diff --git a/part1/mdb.h b/part1/mdb.h
+index db8820c..18358d9 100644
+--- a/part1/mdb.h
++++ b/part1/mdb.h
+@@ -6,6 +6,7 @@
+ #define _MDB_H_
+ 
+ #include <stdio.h>
++#include <stdlib.h>
+ #include "mylist.h"
+ 
+ struct MdbRec {
+@@ -13,6 +14,8 @@ struct MdbRec {
+     char  msg[24];
+ };
+ 
++static void printStr(void *p);
++void parseFile(FILE *f, char *filename);
+ int loadmdb(FILE *fp, struct List *dest);
+ void freemdb(struct List *list);
+ 
+-- 
+1.7.9.5
+
+
+From eb77add831622d38235b375413acc22c00dc4f55 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 9 Mar 2015 03:25:56 -0400
+Subject: [PATCH 02/15] Got linked list to work, discovered lots of memory
+ leaks
+
+---
+ part1/Makefile |    4 ++--
+ part1/mdb.c    |   33 ++++++++++++++++++++++++---------
+ part1/mdb.h    |    1 +
+ 3 files changed, 27 insertions(+), 11 deletions(-)
+
+diff --git a/part1/Makefile b/part1/Makefile
+index b9a822f..569d19b 100644
+--- a/part1/Makefile
++++ b/part1/Makefile
+@@ -60,5 +60,5 @@ all: clean main
+ 
+ 
+ .PHONY: valgrind
+-valgrind: mylist
+-	valgrind --leak-check=yes ./mdb-lookup
++valgrind: mdb
++	valgrind --leak-check=yes ./mdb my-mdb
+diff --git a/part1/mdb.c b/part1/mdb.c
+index 21c2212..36034db 100644
+--- a/part1/mdb.c
++++ b/part1/mdb.c
+@@ -16,26 +16,41 @@ void parseFile(FILE *fp, char *filename) {
+         initList(&list);
+         struct Node *node; 
+         
+-        char pTest[40];  
+-        int size = fread(pTest, 40, 100, fp);   
+                             
+-        int bufSize = 40*(int)size;
+-        printf("size: %d, bufSize %d ", size, bufSize);
+-        char buf[bufSize];                      
+                                                 //to be used for the linked list
+         node = NULL;                            //declare first node to be null
++        char *nameBuf = malloc(40);
++        char *textBuf = malloc(24);
++        if (nameBuf == NULL || textBuf == NULL) {
++                perror(filename);
++                exit(1);
++                }
+         
+-        while(fread(buf,  sizeof(struct MdbRec), 1, fp) != 0) { //while the program is still reading successfully
+-                node = addAfter(&list, node, buf);
++        while(fread(nameBuf, 16, 1, fp) != 0) { //while the program is still reading successfully
++                fread(textBuf, 24, 1, fp);
++                strcat(nameBuf, textBuf);
++                node = addAfter(&list, node, nameBuf);
++                
++                nameBuf = malloc(40);
++                textBuf = malloc(24);
++                if (nameBuf == NULL || textBuf == NULL) {
++                        perror(filename);
++                        exit(1);
++                }
+         }
++
+                                                                                                                    
+         traverseList(&list, &printStr);
+-        
++
++        free(nameBuf);
++        free(textBuf);
++
+         if(ferror(fp)) { 
+                 perror(filename);
+                 exit(1);        
+         } 
+-
++        
++        removeAllNodes(&list);
+         fclose(fp);
+ }
+ 
+diff --git a/part1/mdb.h b/part1/mdb.h
+index 18358d9..d07e8fa 100644
+--- a/part1/mdb.h
++++ b/part1/mdb.h
+@@ -8,6 +8,7 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include "mylist.h"
++#include <string.h>
+ 
+ struct MdbRec {
+     char name[16];
+-- 
+1.7.9.5
+
+
+From 6e1d8b8f5d4807e1fd16c10e44a425bcf2aeae85 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 9 Mar 2015 13:44:56 -0400
+Subject: [PATCH 03/15] changed textBuf to stack, slight improvement in memory
+ leaks
+
+---
+ part1/mdb.c |   12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/part1/mdb.c b/part1/mdb.c
+index 36034db..38bab4d 100644
+--- a/part1/mdb.c
++++ b/part1/mdb.c
+@@ -20,8 +20,8 @@ void parseFile(FILE *fp, char *filename) {
+                                                 //to be used for the linked list
+         node = NULL;                            //declare first node to be null
+         char *nameBuf = malloc(40);
+-        char *textBuf = malloc(24);
+-        if (nameBuf == NULL || textBuf == NULL) {
++        char textBuf[24];
++        if (nameBuf == NULL) {// || textBuf == NULL) {
+                 perror(filename);
+                 exit(1);
+                 }
+@@ -32,8 +32,8 @@ void parseFile(FILE *fp, char *filename) {
+                 node = addAfter(&list, node, nameBuf);
+                 
+                 nameBuf = malloc(40);
+-                textBuf = malloc(24);
+-                if (nameBuf == NULL || textBuf == NULL) {
++                //textBuf = malloc(24);
++                if (nameBuf == NULL) {// || textBuf == NULL) {
+                         perror(filename);
+                         exit(1);
+                 }
+@@ -43,14 +43,14 @@ void parseFile(FILE *fp, char *filename) {
+         traverseList(&list, &printStr);
+ 
+         free(nameBuf);
+-        free(textBuf);
++        //free(textBuf);
++        removeAllNodes(&list);
+ 
+         if(ferror(fp)) { 
+                 perror(filename);
+                 exit(1);        
+         } 
+         
+-        removeAllNodes(&list);
+         fclose(fp);
+ }
+ 
+-- 
+1.7.9.5
+
+
+From 9301fdf6f1b98f8218433ea8373327c6d2bcda70 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 10 Mar 2015 01:07:36 -0400
+Subject: [PATCH 04/15] Fixed memory leaks, about to add mdbRec functionality
+
+---
+ part1/Makefile |    6 +++---
+ part1/mdb.c    |   48 ++++++++++++++++++++++++++++++++++++------------
+ part1/mdb.h    |    1 +
+ 3 files changed, 40 insertions(+), 15 deletions(-)
+
+diff --git a/part1/Makefile b/part1/Makefile
+index 569d19b..4bd483a 100644
+--- a/part1/Makefile
++++ b/part1/Makefile
+@@ -5,10 +5,10 @@
+ CC = gcc
+ CXX = g++
+ # Let’s leave a place holder for additional include directories
+-INCLUDES = 
++INCLUDES = -I ../../lab3/solutions/part1   
+ # Compilation options:
+ # -g for debugging info and -Wall enables all warnings
+-CFLAGS = -g -Wall -I ../../lab3/solutions/part1 $(INCLUDES)
++CFLAGS = -g -Wall $(INCLUDES)
+ # CXXFLAGS = -g -Wall $(INCLUDES)
+ # Linking options:
+ # -g for debugging info
+@@ -61,4 +61,4 @@ all: clean main
+ 
+ .PHONY: valgrind
+ valgrind: mdb
+-	valgrind --leak-check=yes ./mdb my-mdb
++	valgrind --leak-check=full --show-reachable=yes ./mdb my-mdb
+diff --git a/part1/mdb.c b/part1/mdb.c
+index 38bab4d..189870e 100644
+--- a/part1/mdb.c
++++ b/part1/mdb.c
+@@ -9,41 +9,66 @@ void printStr(void *p) {
+         printf("%s\n", (char *)p);
+ }
+ 
++int findSize(FILE *fp) { 
++        char tempBuf[40];
++        int size = 0;
++        while(fread(tempBuf, 40, 1, fp) != 0) {
++                size++;
++                }
++        fseek(fp, 0, SEEK_SET); //reset the file pointer to the beginning of the file
++
++        return size;
++}
++
++void freeBufs(char **heapPtrArr, int size) {
++        int i;
++        for(i = 0; i < size; i++) { 
++                char *currentPtr = heapPtrArr[i];
++                free(currentPtr);
++        }
++}
++
++
+ 
+ void parseFile(FILE *fp, char *filename) {
+             
+         struct List list;
+         initList(&list);
+         struct Node *node; 
+-        
+-                            
+-                                                //to be used for the linked list
+         node = NULL;                            //declare first node to be null
++
++        //necessary to keep track of the pointers we allocate, so they can be freed later        
++        int size = findSize(fp) + 1;    //add the extra 1, because an extra nameBuf is allocated before the while loop exits
++        printf("DBsize: %d\n", size);
++        int ptrIndex = 0;
++        char *heapPtrArr[size];      
++        heapPtrArr[size] = NULL;        //assign last index in array to null
++
+         char *nameBuf = malloc(40);
+         char textBuf[24];
+-        if (nameBuf == NULL) {// || textBuf == NULL) {
++        if (nameBuf == NULL) {
+                 perror(filename);
+                 exit(1);
+                 }
+-        
++        heapPtrArr[ptrIndex++] = nameBuf;
++
++
+         while(fread(nameBuf, 16, 1, fp) != 0) { //while the program is still reading successfully
+                 fread(textBuf, 24, 1, fp);
+                 strcat(nameBuf, textBuf);
+                 node = addAfter(&list, node, nameBuf);
+-                
++
+                 nameBuf = malloc(40);
+-                //textBuf = malloc(24);
+-                if (nameBuf == NULL) {// || textBuf == NULL) {
++                if (nameBuf == NULL) {
+                         perror(filename);
+                         exit(1);
+                 }
++                heapPtrArr[ptrIndex++] = nameBuf;
+         }
+ 
+-                                                                                                                   
+         traverseList(&list, &printStr);
+ 
+-        free(nameBuf);
+-        //free(textBuf);
++        freeBufs(heapPtrArr, size);
+         removeAllNodes(&list);
+ 
+         if(ferror(fp)) { 
+@@ -55,7 +80,6 @@ void parseFile(FILE *fp, char *filename) {
+ }
+ 
+ 
+-
+ int main(int argc, char **argv) { 
+ 
+         if(argc != 2) { 
+diff --git a/part1/mdb.h b/part1/mdb.h
+index d07e8fa..83ef852 100644
+--- a/part1/mdb.h
++++ b/part1/mdb.h
+@@ -15,6 +15,7 @@ struct MdbRec {
+     char  msg[24];
+ };
+ 
++void freeBufs(char **heapPtrArr, int size);
+ static void printStr(void *p);
+ void parseFile(FILE *f, char *filename);
+ int loadmdb(FILE *fp, struct List *dest);
+-- 
+1.7.9.5
+
+
+From 77b1b96fc1b474235ade254c34f1c37c5a69550b Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 10 Mar 2015 01:22:41 -0400
+Subject: [PATCH 05/15] Implemented mdbRec struct
+
+---
+ part1/mdb.c |   33 ++++++++++++++++++---------------
+ part1/mdb.h |    2 +-
+ 2 files changed, 19 insertions(+), 16 deletions(-)
+
+diff --git a/part1/mdb.c b/part1/mdb.c
+index 189870e..fb45404 100644
+--- a/part1/mdb.c
++++ b/part1/mdb.c
+@@ -6,7 +6,10 @@
+ 
+ 
+ void printStr(void *p) {
+-        printf("%s\n", (char *)p);
++        struct MdbRec *mdb = (struct MdbRec *)p;
++        char *name = mdb->name;
++        char *msg = mdb->msg;
++        printf("%s, %s\n", name, msg);
+ }
+ 
+ int findSize(FILE *fp) { 
+@@ -20,10 +23,10 @@ int findSize(FILE *fp) {
+         return size;
+ }
+ 
+-void freeBufs(char **heapPtrArr, int size) {
++void freeBufs(struct MdbRec **heapPtrArr, int size) {
+         int i;
+         for(i = 0; i < size; i++) { 
+-                char *currentPtr = heapPtrArr[i];
++                struct MdbRec *currentPtr = heapPtrArr[i];
+                 free(currentPtr);
+         }
+ }
+@@ -41,29 +44,29 @@ void parseFile(FILE *fp, char *filename) {
+         int size = findSize(fp) + 1;    //add the extra 1, because an extra nameBuf is allocated before the while loop exits
+         printf("DBsize: %d\n", size);
+         int ptrIndex = 0;
+-        char *heapPtrArr[size];      
++        struct MdbRec *heapPtrArr[size];      
+         heapPtrArr[size] = NULL;        //assign last index in array to null
+ 
+-        char *nameBuf = malloc(40);
+-        char textBuf[24];
+-        if (nameBuf == NULL) {
++        struct MdbRec *mdb = malloc(sizeof(struct MdbRec));
++        if (mdb == NULL) {
+                 perror(filename);
+                 exit(1);
+                 }
+-        heapPtrArr[ptrIndex++] = nameBuf;
++        heapPtrArr[ptrIndex++] = mdb;
+ 
+ 
+-        while(fread(nameBuf, 16, 1, fp) != 0) { //while the program is still reading successfully
+-                fread(textBuf, 24, 1, fp);
+-                strcat(nameBuf, textBuf);
+-                node = addAfter(&list, node, nameBuf);
++        while(fread(mdb->name, 16, 1, fp) != 0) { //while the program is still reading successfully
++                fread(mdb->msg, 24, 1, fp);
++                //strcat(nameBuf, textBuf);
++                //printf("%s, %s\n", mdb->name, mdb->msg);
++                node = addAfter(&list, node, mdb);
+ 
+-                nameBuf = malloc(40);
+-                if (nameBuf == NULL) {
++                mdb = malloc(40);
++                if (mdb == NULL) {
+                         perror(filename);
+                         exit(1);
+                 }
+-                heapPtrArr[ptrIndex++] = nameBuf;
++                heapPtrArr[ptrIndex++] = mdb;
+         }
+ 
+         traverseList(&list, &printStr);
+diff --git a/part1/mdb.h b/part1/mdb.h
+index 83ef852..9f8cfb4 100644
+--- a/part1/mdb.h
++++ b/part1/mdb.h
+@@ -15,7 +15,7 @@ struct MdbRec {
+     char  msg[24];
+ };
+ 
+-void freeBufs(char **heapPtrArr, int size);
++void freeBufs(struct MdbRec **heapPtrArr, int size);
+ static void printStr(void *p);
+ void parseFile(FILE *f, char *filename);
+ int loadmdb(FILE *fp, struct List *dest);
+-- 
+1.7.9.5
+
+
+From 2ae3a50ff7d8bf98ed2afbf99f5f9e152c931c4b Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 10 Mar 2015 01:34:32 -0400
+Subject: [PATCH 06/15] added functionality to print list
+
+---
+ part1/mdb.c |    7 -------
+ 1 file changed, 7 deletions(-)
+
+diff --git a/part1/mdb.c b/part1/mdb.c
+index fb45404..c0229c4 100644
+--- a/part1/mdb.c
++++ b/part1/mdb.c
+@@ -42,10 +42,8 @@ void parseFile(FILE *fp, char *filename) {
+ 
+         //necessary to keep track of the pointers we allocate, so they can be freed later        
+         int size = findSize(fp) + 1;    //add the extra 1, because an extra nameBuf is allocated before the while loop exits
+-        printf("DBsize: %d\n", size);
+         int ptrIndex = 0;
+         struct MdbRec *heapPtrArr[size];      
+-        heapPtrArr[size] = NULL;        //assign last index in array to null
+ 
+         struct MdbRec *mdb = malloc(sizeof(struct MdbRec));
+         if (mdb == NULL) {
+@@ -53,12 +51,8 @@ void parseFile(FILE *fp, char *filename) {
+                 exit(1);
+                 }
+         heapPtrArr[ptrIndex++] = mdb;
+-
+-
+         while(fread(mdb->name, 16, 1, fp) != 0) { //while the program is still reading successfully
+                 fread(mdb->msg, 24, 1, fp);
+-                //strcat(nameBuf, textBuf);
+-                //printf("%s, %s\n", mdb->name, mdb->msg);
+                 node = addAfter(&list, node, mdb);
+ 
+                 mdb = malloc(40);
+@@ -78,7 +72,6 @@ void parseFile(FILE *fp, char *filename) {
+                 perror(filename);
+                 exit(1);        
+         } 
+-        
+         fclose(fp);
+ }
+ 
+-- 
+1.7.9.5
+
+
+From 1270484d3e0ecea2a6bb6f49c788688db7aeff31 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Wed, 11 Mar 2015 20:58:04 -0400
+Subject: [PATCH 07/15] Fixed Makefile
+
+---
+ part1/Makefile |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/part1/Makefile b/part1/Makefile
+index 4bd483a..4db9ee2 100644
+--- a/part1/Makefile
++++ b/part1/Makefile
+@@ -26,7 +26,7 @@ LDLIBS = -L ../../lab3/solutions/part1 -lmylist
+ #
+ # Also note that make assumes that main depends on main.o,
+ # # so we can omit it if we want to.
+-mdb: mdb.o
++mdb-lookup: mdb-lookup.o
+ # main.o depends not only on main.c, but also on myadd.h because
+ # main.c includes myadd.h. main.o will get recompiled if either
+ # main.c or myadd.h get modified.
+@@ -38,7 +38,7 @@ mdb: mdb.o
+ #
+ # $(CC) -c $(CFLAGS) <the-.c-file>
+ #
+-mdb.o: mdb.c mdb.h
++mdb-lookup.o: mdb-lookup.c mdb.h
+ 
+ 
+ 
+@@ -61,4 +61,4 @@ all: clean main
+ 
+ .PHONY: valgrind
+ valgrind: mdb
+-	valgrind --leak-check=full --show-reachable=yes ./mdb my-mdb
++	valgrind --leak-check=full --show-reachable=yes ./mdb-lookup my-mdb
+-- 
+1.7.9.5
+
+
+From 97a8e325ddb1bc9564f7fca3cc77130130067bf7 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 14 Mar 2015 21:29:50 -0400
+Subject: [PATCH 08/15] changed file name to mdb-lookup, implemented lookup
+ prompt stage 1
+
+---
+ part1/mdb-lookup.c |  110 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 110 insertions(+)
+ create mode 100644 part1/mdb-lookup.c
+
+diff --git a/part1/mdb-lookup.c b/part1/mdb-lookup.c
+new file mode 100644
+index 0000000..dbf44f0
+--- /dev/null
++++ b/part1/mdb-lookup.c
+@@ -0,0 +1,110 @@
++
++
++
++
++#include "mdb.h"
++
++
++void printStr(void *p) {
++        struct MdbRec *mdb = (struct MdbRec *)p;
++        char *name = mdb->name;
++        char *msg = mdb->msg;
++        printf("%s, %s\n", name, msg);
++}
++
++int findSize(FILE *fp) { 
++        char tempBuf[40];
++        int size = 0;
++        while(fread(tempBuf, 40, 1, fp) != 0) {
++                size++;
++                }
++        fseek(fp, 0, SEEK_SET); //reset the file pointer to the beginning of the file
++
++        return size;
++}
++
++void freeBufs(struct MdbRec **heapPtrArr, int size) {
++        int i;
++        for(i = 0; i < size; i++) { 
++                struct MdbRec *currentPtr = heapPtrArr[i];
++                free(currentPtr);
++        }
++}
++
++char *promptUser(char *shortInput) { 
++        char input[50];
++        memset(shortInput, '\0', sizeof(shortInput));   
++
++        printf("%s", "lookup: ");
++        scanf("%s", input);
++        
++        strncpy(shortInput, input, 5);
++        return shortInput; 
++}
++
++void parseFile(FILE *fp, char *filename) {
++            
++        struct List list;
++        initList(&list);
++        struct Node *node; 
++        node = NULL;                            //declare first node to be null
++
++        //necessary to keep track of the pointers we allocate, so they can be freed later        
++        int size = findSize(fp) + 1;    //add the extra 1, because an extra nameBuf is allocated before the while loop exits
++        int ptrIndex = 0;
++        struct MdbRec *heapPtrArr[size];      
++
++        struct MdbRec *mdb = malloc(sizeof(struct MdbRec));
++        if (mdb == NULL) {
++                perror(filename);
++                exit(1);
++                }
++        heapPtrArr[ptrIndex++] = mdb;
++        while(fread(mdb->name, 16, 1, fp) != 0) { //while the program is still reading successfully
++                fread(mdb->msg, 24, 1, fp);
++                node = addAfter(&list, node, mdb);
++
++                mdb = malloc(40);
++                if (mdb == NULL) {
++                        perror(filename);
++                        exit(1);
++                }
++                heapPtrArr[ptrIndex++] = mdb;
++        }
++        char tempInput[5];
++        char *input =  promptUser(tempInput);
++        //printf("%s\n", input);
++        
++        
++        traverseList(&list, &printStr);
++
++        freeBufs(heapPtrArr, size);
++        removeAllNodes(&list);
++
++        if(ferror(fp)) { 
++                perror(filename);
++                exit(1);        
++        } 
++        fclose(fp);
++}
++
++
++int main(int argc, char **argv) { 
++
++        if(argc != 2) { 
++                fprintf(stderr, "%s\n", "usage: mdb-lookup <file_name>");
++                exit(1);
++        }
++
++        char *filename = argv[1];
++        FILE *fp = fopen(filename, "rb");
++        if(fp == NULL) { 
++                perror(filename);
++                exit(1);
++        }
++
++        parseFile(fp, filename);
++
++        return 0;
++
++}
+-- 
+1.7.9.5
+
+
+From 929722b8b133cf690a574f4f26b1f2b07467d64e Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 14 Mar 2015 22:32:27 -0400
+Subject: [PATCH 09/15] rethought implementation of searchList
+
+---
+ part1/mdb-lookup.c |   32 ++++++++++++++++++--------------
+ 1 file changed, 18 insertions(+), 14 deletions(-)
+
+diff --git a/part1/mdb-lookup.c b/part1/mdb-lookup.c
+index dbf44f0..f44d27d 100644
+--- a/part1/mdb-lookup.c
++++ b/part1/mdb-lookup.c
+@@ -31,21 +31,16 @@ void freeBufs(struct MdbRec **heapPtrArr, int size) {
+         }
+ }
+ 
+-char *promptUser(char *shortInput) { 
+-        char input[50];
+-        memset(shortInput, '\0', sizeof(shortInput));   
+-
+-        printf("%s", "lookup: ");
+-        scanf("%s", input);
+-        
+-        strncpy(shortInput, input, 5);
+-        return shortInput; 
++struct List *searchList(struct List *list, char *shortInput) { 
++        printf("%s\n", shortInput); 
+ }
+ 
+ void parseFile(FILE *fp, char *filename) {
+             
+         struct List list;
+         initList(&list);
++        struct List hitList;
++        initList(&hitList);
+         struct Node *node; 
+         node = NULL;                            //declare first node to be null
+ 
+@@ -71,11 +66,19 @@ void parseFile(FILE *fp, char *filename) {
+                 }
+                 heapPtrArr[ptrIndex++] = mdb;
+         }
+-        char tempInput[5];
+-        char *input =  promptUser(tempInput);
+-        //printf("%s\n", input);
+-        
+-        
++        int c;
++        char input[50];
++        char shortInput[5];
++        memset(shortInput, '\0', sizeof(shortInput));   
++        while ((c = fgetc(stdin)) != EOF) { 
++                printf("%s", "lookup: "); 
++                scanf("%s", input);
++                strncpy(shortInput, input, 5);
++                struct Node *addNode = searchList(&list, shortInput);
++                
++        }
++        printf("%s", "EOF Entered");
++
+         traverseList(&list, &printStr);
+ 
+         freeBufs(heapPtrArr, size);
+@@ -86,6 +89,7 @@ void parseFile(FILE *fp, char *filename) {
+                 exit(1);        
+         } 
+         fclose(fp);
++        exit(0);
+ }
+ 
+ 
+-- 
+1.7.9.5
+
+
+From c24840db07f251f67a73ba9b1e18132531f5b895 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 14 Mar 2015 23:43:46 -0400
+Subject: [PATCH 10/15] Added EOF detection
+
+---
+ part1/mdb-lookup.c |   22 +++++++++-------------
+ 1 file changed, 9 insertions(+), 13 deletions(-)
+
+diff --git a/part1/mdb-lookup.c b/part1/mdb-lookup.c
+index f44d27d..971e838 100644
+--- a/part1/mdb-lookup.c
++++ b/part1/mdb-lookup.c
+@@ -31,18 +31,16 @@ void freeBufs(struct MdbRec **heapPtrArr, int size) {
+         }
+ }
+ 
+-struct List *searchList(struct List *list, char *shortInput) { 
+-        printf("%s\n", shortInput); 
++void searchList(struct List *list, char *shortInput) { 
++        
++        printf("%s ", shortInput); 
+ }
+ 
+ void parseFile(FILE *fp, char *filename) {
+             
+         struct List list;
+         initList(&list);
+-        struct List hitList;
+-        initList(&hitList);
+-        struct Node *node; 
+-        node = NULL;                            //declare first node to be null
++        struct Node *node = NULL;
+ 
+         //necessary to keep track of the pointers we allocate, so they can be freed later        
+         int size = findSize(fp) + 1;    //add the extra 1, because an extra nameBuf is allocated before the while loop exits
+@@ -70,16 +68,14 @@ void parseFile(FILE *fp, char *filename) {
+         char input[50];
+         char shortInput[5];
+         memset(shortInput, '\0', sizeof(shortInput));   
+-        while ((c = fgetc(stdin)) != EOF) { 
+-                printf("%s", "lookup: "); 
+-                scanf("%s", input);
++        printf("%s", "lookup: "); 
++        while(fgets(input, 50, stdin) != NULL) {        //returns NULL on EOF 
+                 strncpy(shortInput, input, 5);
+-                struct Node *addNode = searchList(&list, shortInput);
+-                
++                searchList(&list, shortInput);
++                printf("\n%s", "lookup: ");
+         }
+-        printf("%s", "EOF Entered");
+ 
+-        traverseList(&list, &printStr);
++        //traverseList(&list, &printStr);
+ 
+         freeBufs(heapPtrArr, size);
+         removeAllNodes(&list);
+-- 
+1.7.9.5
+
+
+From 4e7b3939412c5796b1d4d984f5e913914c503e27 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 15 Mar 2015 00:13:59 -0400
+Subject: [PATCH 11/15] Began search function
+
+---
+ part1/mdb-lookup.c |   13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/part1/mdb-lookup.c b/part1/mdb-lookup.c
+index 971e838..f274c05 100644
+--- a/part1/mdb-lookup.c
++++ b/part1/mdb-lookup.c
+@@ -32,8 +32,15 @@ void freeBufs(struct MdbRec **heapPtrArr, int size) {
+ }
+ 
+ void searchList(struct List *list, char *shortInput) { 
+-        
+-        printf("%s ", shortInput); 
++        struct Node *node = list->head;
++        while(node) {
++                struct MdbRec *mdb = (struct MdbRec *)node->data;
++                char *name = mdb->name;
++                char *msg = mdb->msg;
++                printf("%s, %s\n", name, msg);
++                node = node->next;
++        }
++       // printf("%s ", shortInput); 
+ }
+ 
+ void parseFile(FILE *fp, char *filename) {
+@@ -75,8 +82,6 @@ void parseFile(FILE *fp, char *filename) {
+                 printf("\n%s", "lookup: ");
+         }
+ 
+-        //traverseList(&list, &printStr);
+-
+         freeBufs(heapPtrArr, size);
+         removeAllNodes(&list);
+ 
+-- 
+1.7.9.5
+
+
+From 73dbea057244782dd9c03a362ed78142f338235b Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 15 Mar 2015 15:17:33 -0400
+Subject: [PATCH 12/15] Finished printing implementation, added valgrind
+ output to readme
+
+---
+ README.txt         |   50 +++++++++++++++++++++++++++++++++++++++-----------
+ part1/mdb-lookup.c |   48 ++++++++++++++++++++++++++----------------------
+ 2 files changed, 65 insertions(+), 33 deletions(-)
+
+diff --git a/README.txt b/README.txt
+index 66dfd3e..e3b8103 100644
+--- a/README.txt
++++ b/README.txt
+@@ -1,11 +1,39 @@
+-This file should contain:
+-
+-  - your name
+-  - your UNI
+-  - lab assignment number
+-  - description for each part
+-  
+-The description should indicate whether your solution for the part is
+-working or not.  You may also want to include anything else you would
+-like to communicate to the grader such as extra functionalities you
+-implemented or how you tried to fix your non-working code.
++
++  - Josh Fram
++  - jpf2141
++  - Lab4 
++  - Part 1 Runs exactly as specified in the lab instructions 
++ 
++
++
++
++
++
++
++
++
++
++==30417== Memcheck, a memory error detector
++==30417== Copyright (C) 2002-2011, and GNU GPL'd, by Julian Seward et al.
++==30417== Using Valgrind-3.7.0 and LibVEX; rerun with -h for copyright info
++==30417== Command: ./mdb-lookup my-mdb
++==30417== 
++lookup: Josh    
++    1: {Josh} said {Test}
++
++Lookup:    
++    1: {Josh} said {Test}
++    2: {Jooosh } said {Teest}
++    3: {Jawsh} said {Tast}
++    4: {Jooooosh } said {Teeeeeest}
++
++Lookup: 
++Lookup: ==30417== 
++==30417== HEAP SUMMARY:
++==30417==     in use at exit: 0 bytes in 0 blocks
++==30417==   total heap usage: 10 allocs, 10 frees, 832 bytes allocated
++==30417== 
++==30417== All heap blocks were freed -- no leaks are possible
++==30417== 
++==30417== For counts of detected and suppressed errors, rerun with: -v
++==30417== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 2 from 2)
+diff --git a/part1/mdb-lookup.c b/part1/mdb-lookup.c
+index f274c05..21ed340 100644
+--- a/part1/mdb-lookup.c
++++ b/part1/mdb-lookup.c
+@@ -31,24 +31,11 @@ void freeBufs(struct MdbRec **heapPtrArr, int size) {
+         }
+ }
+ 
+-void searchList(struct List *list, char *shortInput) { 
+-        struct Node *node = list->head;
+-        while(node) {
+-                struct MdbRec *mdb = (struct MdbRec *)node->data;
+-                char *name = mdb->name;
+-                char *msg = mdb->msg;
+-                printf("%s, %s\n", name, msg);
+-                node = node->next;
+-        }
+-       // printf("%s ", shortInput); 
+-}
+-
+ void parseFile(FILE *fp, char *filename) {
+             
+         struct List list;
+         initList(&list);
+-        struct Node *node = NULL;
+-
++        struct Node *node = NULL;       //initialize to NULL
+         //necessary to keep track of the pointers we allocate, so they can be freed later        
+         int size = findSize(fp) + 1;    //add the extra 1, because an extra nameBuf is allocated before the while loop exits
+         int ptrIndex = 0;
+@@ -71,15 +58,32 @@ void parseFile(FILE *fp, char *filename) {
+                 }
+                 heapPtrArr[ptrIndex++] = mdb;
+         }
+-        int c;
+-        char input[50];
+-        char shortInput[5];
+-        memset(shortInput, '\0', sizeof(shortInput));   
+-        printf("%s", "lookup: "); 
+-        while(fgets(input, 50, stdin) != NULL) {        //returns NULL on EOF 
++
++        char input[1000];
++        char shortInput[6];
++        printf("%s", "lookup: ");
++        fflush(stdout); 
++        while(fgets(input, sizeof(input), stdin) != NULL) {        //returns NULL on EOF 
+                 strncpy(shortInput, input, 5);
+-                searchList(&list, shortInput);
+-                printf("\n%s", "lookup: ");
++                shortInput[5] = '\0';   //Null terminate the string
++              
++                int length = strlen(shortInput);
++                if(shortInput[length-1] == '\n') {        //if th string is less than 5 characters
++                        shortInput[length-1] = '\0';
++                        }
++                
++                int recordNum = 1;
++                struct Node *mdbNode = list.head; 
++                while(mdbNode) { 
++                        struct MdbRec *mdb = (struct MdbRec *)mdbNode->data;
++                        if (strstr(mdb->name, shortInput) || strstr(mdb->msg, shortInput)) {
++                                printf("%4d: {%s} said {%s}\n", recordNum, mdb->name, mdb->msg);
++                        }
++                        recordNum++;
++                        mdbNode = mdbNode->next;
++                }
++                printf("\n%s", "Lookup: ");
++                fflush(stdout);
+         }
+ 
+         freeBufs(heapPtrArr, size);
+-- 
+1.7.9.5
+
+
+From 544547e42b705e5792fa03b0a6f928ae2b072402 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 15 Mar 2015 15:41:16 -0400
+Subject: [PATCH 13/15] Added db submission to Readme
+
+---
+ README.txt  |    3 +-
+ part1/mdb.c |   97 -----------------------------------------------------------
+ 2 files changed, 2 insertions(+), 98 deletions(-)
+ delete mode 100644 part1/mdb.c
+
+diff --git a/README.txt b/README.txt
+index e3b8103..5bae396 100644
+--- a/README.txt
++++ b/README.txt
+@@ -6,7 +6,8 @@
+  
+ 
+ 
+-
++Entry to the class database:
++1490: {Josh } said {beat alex}
+ 
+ 
+ 
+diff --git a/part1/mdb.c b/part1/mdb.c
+deleted file mode 100644
+index c0229c4..0000000
+--- a/part1/mdb.c
++++ /dev/null
+@@ -1,97 +0,0 @@
+-
+-
+-
+-
+-#include "mdb.h"
+-
+-
+-void printStr(void *p) {
+-        struct MdbRec *mdb = (struct MdbRec *)p;
+-        char *name = mdb->name;
+-        char *msg = mdb->msg;
+-        printf("%s, %s\n", name, msg);
+-}
+-
+-int findSize(FILE *fp) { 
+-        char tempBuf[40];
+-        int size = 0;
+-        while(fread(tempBuf, 40, 1, fp) != 0) {
+-                size++;
+-                }
+-        fseek(fp, 0, SEEK_SET); //reset the file pointer to the beginning of the file
+-
+-        return size;
+-}
+-
+-void freeBufs(struct MdbRec **heapPtrArr, int size) {
+-        int i;
+-        for(i = 0; i < size; i++) { 
+-                struct MdbRec *currentPtr = heapPtrArr[i];
+-                free(currentPtr);
+-        }
+-}
+-
+-
+-
+-void parseFile(FILE *fp, char *filename) {
+-            
+-        struct List list;
+-        initList(&list);
+-        struct Node *node; 
+-        node = NULL;                            //declare first node to be null
+-
+-        //necessary to keep track of the pointers we allocate, so they can be freed later        
+-        int size = findSize(fp) + 1;    //add the extra 1, because an extra nameBuf is allocated before the while loop exits
+-        int ptrIndex = 0;
+-        struct MdbRec *heapPtrArr[size];      
+-
+-        struct MdbRec *mdb = malloc(sizeof(struct MdbRec));
+-        if (mdb == NULL) {
+-                perror(filename);
+-                exit(1);
+-                }
+-        heapPtrArr[ptrIndex++] = mdb;
+-        while(fread(mdb->name, 16, 1, fp) != 0) { //while the program is still reading successfully
+-                fread(mdb->msg, 24, 1, fp);
+-                node = addAfter(&list, node, mdb);
+-
+-                mdb = malloc(40);
+-                if (mdb == NULL) {
+-                        perror(filename);
+-                        exit(1);
+-                }
+-                heapPtrArr[ptrIndex++] = mdb;
+-        }
+-
+-        traverseList(&list, &printStr);
+-
+-        freeBufs(heapPtrArr, size);
+-        removeAllNodes(&list);
+-
+-        if(ferror(fp)) { 
+-                perror(filename);
+-                exit(1);        
+-        } 
+-        fclose(fp);
+-}
+-
+-
+-int main(int argc, char **argv) { 
+-
+-        if(argc != 2) { 
+-                fprintf(stderr, "%s\n", "usage: mdb-lookup <file_name>");
+-                exit(1);
+-        }
+-
+-        char *filename = argv[1];
+-        FILE *fp = fopen(filename, "rb");
+-        if(fp == NULL) { 
+-                perror(filename);
+-                exit(1);
+-        }
+-
+-        parseFile(fp, filename);
+-
+-        return 0;
+-
+-}
+-- 
+1.7.9.5
+
+
+From 648d0ad13500403db4ec10dc42deecab11221df0 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 15 Mar 2015 21:24:47 -0400
+Subject: [PATCH 14/15] Added to README
+
+---
+ README.txt |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/README.txt b/README.txt
+index 5bae396..3deec45 100644
+--- a/README.txt
++++ b/README.txt
+@@ -3,7 +3,9 @@
+   - jpf2141
+   - Lab4 
+   - Part 1 Runs exactly as specified in the lab instructions 
+- 
++    In office hours, Edo said it was ok to name my single .c source 
++    file "mdb-lookup.c" instead of mdb.c, because this was causing
++    issues with my Makefile
+ 
+ 
+ Entry to the class database:
+-- 
+1.7.9.5
+
+
+From 1062b9f4bda3fdd109f56d2b8fdb7050d0c68595 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 15 Mar 2015 21:42:59 -0400
+Subject: [PATCH 15/15] Fixed unused warning
+
+---
+ part1/mdb-lookup.c |    9 ---------
+ part1/mdb.h        |    1 -
+ 2 files changed, 10 deletions(-)
+
+diff --git a/part1/mdb-lookup.c b/part1/mdb-lookup.c
+index 21ed340..910bc9f 100644
+--- a/part1/mdb-lookup.c
++++ b/part1/mdb-lookup.c
+@@ -1,17 +1,8 @@
+ 
+ 
+ 
+-
+ #include "mdb.h"
+ 
+-
+-void printStr(void *p) {
+-        struct MdbRec *mdb = (struct MdbRec *)p;
+-        char *name = mdb->name;
+-        char *msg = mdb->msg;
+-        printf("%s, %s\n", name, msg);
+-}
+-
+ int findSize(FILE *fp) { 
+         char tempBuf[40];
+         int size = 0;
+diff --git a/part1/mdb.h b/part1/mdb.h
+index 9f8cfb4..ea1fbf4 100644
+--- a/part1/mdb.h
++++ b/part1/mdb.h
+@@ -16,7 +16,6 @@ struct MdbRec {
+ };
+ 
+ void freeBufs(struct MdbRec **heapPtrArr, int size);
+-static void printStr(void *p);
+ void parseFile(FILE *f, char *filename);
+ int loadmdb(FILE *fp, struct List *dest);
+ void freemdb(struct List *list);
+-- 
+1.7.9.5
+

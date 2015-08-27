@@ -1,0 +1,2140 @@
+From 417e2cde01c8327a2a061095204776e2b1d45498 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Fri, 17 Apr 2015 21:17:12 -0400
+Subject: [PATCH 01/16] First commit, running server that recieves and prints
+ header
+
+---
+ Makefile      |   33 ++++++++
+ http-server.c |  254 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 287 insertions(+)
+ create mode 100644 Makefile
+ create mode 100644 http-server.c
+
+diff --git a/Makefile b/Makefile
+new file mode 100644
+index 0000000..d7c7eab
+--- /dev/null
++++ b/Makefile
+@@ -0,0 +1,33 @@
++
++#
++# Makefile for lab 6, part 1
++#
++
++CC  = gcc
++CXX = g++
++
++INCLUDES = -I ../lab3/part1
++CFLAGS   = -g -Wall $(INCLUDES)
++CXXFLAGS = -g -Wall $(INCLUDES)
++
++LDFLAGS = -g -L ../lab3/part1
++LDLIBS = -lmylist
++
++
++http-server: http-server.o 
++
++# header dependency
++http-server.o: http-server.c
++
++
++.PHONY: clean
++clean:
++	rm -f *.o *~ a.out core http-server
++
++.PHONY: valgrind
++valgrind: 
++	valgrind --leak-check=full --show-reachable=yes ./mdb-lookup-server my-mdb 1111
++
++.PHONY: all
++all: clean default
++
+diff --git a/http-server.c b/http-server.c
+new file mode 100644
+index 0000000..026d3ec
+--- /dev/null
++++ b/http-server.c
+@@ -0,0 +1,254 @@
++
++/*
++ * mdb-lookup-server.c
++ *
++ * This program is constructed by merging mdb-lookup.c and
++ * TCPEchoServer.c.
++ *
++ * The comments marked with "CHANGE" indicate the places that were
++ * modified from TCPEchoServer.c and mdb-lookup.c.
++ */
++
++#include "mdb.h"
++#include "mylist.h"
++
++#include <stdio.h>      /* for printf() and fprintf() */
++#include <sys/socket.h> /* for socket(), bind(), and connect() */
++#include <arpa/inet.h>  /* for sockaddr_in and inet_ntoa() */
++#include <stdlib.h>     /* for atoi() and exit() */
++#include <string.h>     /* for memset() */
++#include <unistd.h>     /* for close() */
++#include <signal.h>     /* for signal() */
++
++#define MAXPENDING 5    /* Maximum outstanding connection requests */
++
++#define KeyMax 5
++
++static void die(const char *message)
++{
++    perror(message);
++    exit(1); 
++}
++
++// CHANGE: added an additional parameter
++void HandleTCPClientMDB(int clntSocket, char *db_filename);
++void HandleTCPClient(int clntSocket, char *web_root);
++
++
++int main(int argc, char *argv[])
++{
++    int servSock;                    /* Socket descriptor for server */
++    int clntSock;                    /* Socket descriptor for client */
++    struct sockaddr_in echoServAddr; /* Local address */
++    struct sockaddr_in echoClntAddr; /* Client address */
++    unsigned short echoServPort;     /* Server port */
++    unsigned int clntLen;            /* Length of client address data struct */
++
++    // CHANGE: ignore SIGPIPE so that we don't terminate when we call
++    // send() on a disconnected socket.
++
++    if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) 
++	die("signal() failed");
++
++    // CHANGE: progarm takes two parameters
++
++    if (argc != 5)  
++    {
++        fprintf(stderr, "Usage:  %s <server_port> <web_root> <mdb-lookup-host> <mdb-lookup-port>>\n", argv[0]);
++        exit(1);
++    }
++
++    echoServPort = atoi(argv[1]);  /* 1st arg:  local port */
++    char *web_root = argv[2];
++    char *mdb_lookup_host = argv[3];
++    unsigned short mdb_lookup_port = atoi(argv[4]);
++
++    /* Create socket for incoming connections */
++    if ((servSock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
++        die("socket() failed");
++      
++    /* Construct local address structure */
++    memset(&echoServAddr, 0, sizeof(echoServAddr));   // Zero out structure
++    echoServAddr.sin_family = AF_INET;                // Internet address family
++    echoServAddr.sin_addr.s_addr = htonl(INADDR_ANY); // Any incoming interface
++    echoServAddr.sin_port = htons(echoServPort);      // Local port
++
++    /* Bind to the local address */
++    if (bind(servSock, (struct sockaddr *)&echoServAddr, 
++		sizeof(echoServAddr)) < 0)
++        die("bind() failed");
++
++    /* Mark the socket so it will listen for incoming connections */
++    if (listen(servSock, MAXPENDING) < 0)
++        die("listen() failed");
++
++    for (;;) /* Run forever */
++    {
++        /* Set the size of the in-out parameter */
++        clntLen = sizeof(echoClntAddr);
++
++        /* Wait for a client to connect */
++        if ((clntSock = accept(servSock, (struct sockaddr *) &echoClntAddr, 
++                               &clntLen)) < 0)
++            die("accept() failed");
++
++        /* clntSock is connected to a client! */
++
++        fprintf(stderr, "\nconnection started from: %s\n", 
++		inet_ntoa(echoClntAddr.sin_addr));
++
++        HandleTCPClient(clntSock, web_root);
++	
++	fprintf(stderr, "connection terminated from: %s\n", 
++		inet_ntoa(echoClntAddr.sin_addr));
++    }
++    /* NOT REACHED */
++}
++
++
++void HandleTCPClient(int clntSocket, char *web_root) {
++
++    char recvBuf[1000];
++    int recvMsgSize;
++
++    //recieve request from client
++    if ((recvMsgSize = recv(clntSocket, recvBuf, 1000, 0)) < 0)
++            die("recv() failed");
++
++    recvBuf[recvMsgSize] = '\0';
++    printf("%s\n", recvBuf);
++
++
++}
++
++
++
++
++
++
++
++
++
++
++
++
++
++void HandleTCPClientMDB(int clntSocket, char *db_filename)
++{
++    // CHANGE: this function is what used to be main() in mdb-lookup.c
++
++    /*
++     * open the database file specified in the argument
++     */
++
++    FILE *fp = fopen(db_filename, "rb"); // open in read, binary mode
++    if (fp == NULL) 
++	die(db_filename);
++
++    /*
++     * read all records into memory
++     */
++
++    struct List list;
++    initList(&list);
++
++    struct MdbRec r;
++    struct Node *node = NULL;
++
++    while (fread(&r, sizeof(r), 1, fp) == 1) {
++
++	// allocate memory for a new record and copy into it the one
++	// that was just read from the database.
++	struct MdbRec *rec = (struct MdbRec *)malloc(sizeof(r));
++	if (!rec)
++	    die("malloc failed");
++	memcpy(rec, &r, sizeof(r));
++	
++	// add the record to the linked list.
++	node = addAfter(&list, node, rec);
++	if (node == NULL) 
++	    die("addAfter() failed");
++    }
++
++    // see if fread() produced error
++    if (ferror(fp)) 
++	die(db_filename);
++
++    /*
++     * lookup loop
++     */
++
++    // CHANGE: wrap the socket with a FILE* using fdopen()
++    FILE *input = fdopen(clntSocket, "r"); 
++    if (input == NULL) 
++	die("fdopen failed");
++
++    char line[1000];
++    char key[KeyMax + 1];
++
++    char out_buf[1000];
++    int len;
++    int res;
++
++    // CHANGE: we don't do lookup prompt in this socket version of the
++    // porgram as it interferes with detecting the end of result using
++    // a blank line.
++
++    while (fgets(line, sizeof(line), input) != NULL) {
++	
++	// must null-terminate the string manually after strncpy().
++	strncpy(key, line, sizeof(key) - 1);
++	key[sizeof(key) - 1] = '\0';
++
++	// if newline is there, remove it.
++	size_t last = strlen(key) - 1;
++	if (key[last] == '\n')
++	    key[last] = '\0';
++
++	// traverse the list, printing out the matching records
++	struct Node *node = list.head;
++	int recNo = 1;
++	while (node) {
++	    struct MdbRec *rec = (struct MdbRec *)node->data;
++	    if (strstr(rec->name, key) || strstr(rec->msg, key)) {
++		// CHANGE: we changed printf() into sprintf() & send()
++		len = sprintf(out_buf, "%4d: {%s} said {%s}\n", recNo, rec->name, rec->msg);
++		if ((res = send(clntSocket, out_buf, len, 0)) != len) {
++		    perror("send() failed");
++		    break;
++		}
++	    }
++	    node = node->next;
++	    recNo++;
++	}
++
++	// CHANGE: we changed printf() into sprintf() & send()
++	// CHANGE: send a blank line to indicate the end of search result
++	len = sprintf(out_buf, "\n");
++	if ((res = send(clntSocket, out_buf, len, 0)) != len) 
++	    perror("send() failed");
++    }
++
++    // CHANGE: check 'input' rather than 'stdin'
++    //
++    // see if fgets() produced error
++    if (ferror(input)) {
++	perror("fgets() failed");
++    }
++
++    /*
++     * clean up and quit
++     */
++
++    // free all the records
++    traverseList(&list, &free);
++
++    removeAllNodes(&list);
++
++    // close the database file
++    fclose(fp);
++
++    // CHANGE: close the socket by closing the FILE* wrapper
++    fclose(input);
++}
++
+-- 
+1.7.9.5
+
+
+From af175637f243677c30b5f953fe4e0033b6525996 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Fri, 17 Apr 2015 22:49:18 -0400
+Subject: [PATCH 02/16] Starting parsing header
+
+---
+ Makefile      |    2 +-
+ http-server.c |   24 +++++++++++++++---------
+ 2 files changed, 16 insertions(+), 10 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index d7c7eab..44cb77c 100644
+--- a/Makefile
++++ b/Makefile
+@@ -23,7 +23,7 @@ http-server.o: http-server.c
+ .PHONY: clean
+ clean:
+ 	rm -f *.o *~ a.out core http-server
+-
++	ls -alF
+ .PHONY: valgrind
+ valgrind: 
+ 	valgrind --leak-check=full --show-reachable=yes ./mdb-lookup-server my-mdb 1111
+diff --git a/http-server.c b/http-server.c
+index 026d3ec..30d0a81 100644
+--- a/http-server.c
++++ b/http-server.c
+@@ -21,6 +21,7 @@
+ #include <signal.h>     /* for signal() */
+ 
+ #define MAXPENDING 5    /* Maximum outstanding connection requests */
++#define IOBUFSIZE 4096  /*Send and Recieve buffer size */ 
+ 
+ #define KeyMax 5
+ 
+@@ -32,7 +33,7 @@ static void die(const char *message)
+ 
+ // CHANGE: added an additional parameter
+ void HandleTCPClientMDB(int clntSocket, char *db_filename);
+-void HandleTCPClient(int clntSocket, char *web_root);
++void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_root);
+ 
+ 
+ int main(int argc, char *argv[])
+@@ -97,7 +98,7 @@ int main(int argc, char *argv[])
+         fprintf(stderr, "\nconnection started from: %s\n", 
+ 		inet_ntoa(echoClntAddr.sin_addr));
+ 
+-        HandleTCPClient(clntSock, web_root);
++        HandleTCPClient(clntSock, &echoClntAddr, web_root);
+ 	
+ 	fprintf(stderr, "connection terminated from: %s\n", 
+ 		inet_ntoa(echoClntAddr.sin_addr));
+@@ -106,19 +107,24 @@ int main(int argc, char *argv[])
+ }
+ 
+ 
+-void HandleTCPClient(int clntSocket, char *web_root) {
++void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_root) {
+ 
+-    char recvBuf[1000];
++    char recvBuf[IOBUFSIZE];
+     int recvMsgSize;
+ 
+     //recieve request from client
+-    if ((recvMsgSize = recv(clntSocket, recvBuf, 1000, 0)) < 0)
+-            die("recv() failed");
+-
+-    recvBuf[recvMsgSize] = '\0';
+-    printf("%s\n", recvBuf);
++    if ((recvMsgSize = recv(clntSocket, recvBuf, IOBUFSIZE, 0)) < 0) {
++        die("recv() failed");
++    }
++    recvBuf[recvMsgSize] = '\0';    //null terminate buffer
++    //printf("%s\n", recvBuf);
+ 
++    /* parse request */ 
++    char *clnt_IP = inet_ntoa(clntAddr->sin_addr);
++    printf("%s\n", clnt_IP);
++ 
+ 
++    close(clntSocket);
+ }
+ 
+ 
+-- 
+1.7.9.5
+
+
+From ccde0996291dd6b681446c0d8d2543e7c2303205 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 18 Apr 2015 17:53:36 -0400
+Subject: [PATCH 03/16] Started building response
+
+---
+ http-server.c |   76 ++++++++++++++++++++++++++++++++++++++++++++++++---------
+ 1 file changed, 64 insertions(+), 12 deletions(-)
+
+diff --git a/http-server.c b/http-server.c
+index 30d0a81..2f1006b 100644
+--- a/http-server.c
++++ b/http-server.c
+@@ -31,6 +31,11 @@ static void die(const char *message)
+     exit(1); 
+ }
+ 
++static void logRequest(char *clnt_IP, char *method, char *requestURI, char *httpVersion, char *status) 
++{
++    printf("%s \"%s %s %s\" %s\n", clnt_IP, method, requestURI, httpVersion, status);
++}
++
+ // CHANGE: added an additional parameter
+ void HandleTCPClientMDB(int clntSocket, char *db_filename);
+ void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_root);
+@@ -94,14 +99,18 @@ int main(int argc, char *argv[])
+             die("accept() failed");
+ 
+         /* clntSock is connected to a client! */
+-
++        
++        /*
+         fprintf(stderr, "\nconnection started from: %s\n", 
+ 		inet_ntoa(echoClntAddr.sin_addr));
++        */
+ 
+         HandleTCPClient(clntSock, &echoClntAddr, web_root);
+-	
++
++        /*       
+ 	fprintf(stderr, "connection terminated from: %s\n", 
+ 		inet_ntoa(echoClntAddr.sin_addr));
++        */
+     }
+     /* NOT REACHED */
+ }
+@@ -109,21 +118,64 @@ int main(int argc, char *argv[])
+ 
+ void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_root) {
+ 
+-    char recvBuf[IOBUFSIZE];
+-    int recvMsgSize;
++    //tokens for parsing
++    char *token_separators = "\t \r\n"; // tab, space, new line
+ 
+-    //recieve request from client
+-    if ((recvMsgSize = recv(clntSocket, recvBuf, IOBUFSIZE, 0)) < 0) {
+-        die("recv() failed");
++    FILE *input; 
++    if ((input =  fdopen(clntSocket, "r")) == NULL) { 
++        die("fdopen failed");
+     }
+-    recvBuf[recvMsgSize] = '\0';    //null terminate buffer
+-    //printf("%s\n", recvBuf);
+ 
+-    /* parse request */ 
++    /* get first line of the request */
++    char requestLine[200];
++    fgets(requestLine, 200, input);
++    //printf("%s\n", requestLine);      //print entire first line 
++    
++    /* parse request */
++    int requestLen = strlen(requestLine);
++    requestLine[requestLen] = '\0';     //null terminate request line
+     char *clnt_IP = inet_ntoa(clntAddr->sin_addr);
+-    printf("%s\n", clnt_IP);
+- 
++    char *method = strtok(requestLine, token_separators);
++    char *requestURI = strtok(NULL, token_separators);
++    char *httpVersion = strtok(NULL, token_separators);
++    char *status;
++
++    /* check request for errors*/
++    if(strcmp(method, "GET") != 0) {    //checks for GET method
++        status = "501 Not Implemented";
++        
++
++        logRequest(clnt_IP, method, requestURI, httpVersion, status); 
++
++    }
++
++    if(requestURI != NULL) {    //makes sure request URI isnt null
++        char startURI = requestURI[0];
++        if('/' != startURI) {        //checks requestURI starts with '/'
++                status = "400 Bad Request";
++                logRequest(clnt_IP, method, requestURI, httpVersion, status);
++        }   
++    }
++
+ 
++
++
++    /* build response */
++
++
++    
++
++
++
++
++
++
++
++    //print details to stdout
++    status = "200 OK";
++    logRequest(clnt_IP, method, requestURI, httpVersion, status); 
++
++    fclose(input);
+     close(clntSocket);
+ }
+ 
+-- 
+1.7.9.5
+
+
+From 37b492d7900f598ba15685ac024e641d33e3a86b Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 19 Apr 2015 03:05:03 -0400
+Subject: [PATCH 04/16] Almost finished part 2a, slight errors in sending body
+ html
+
+---
+ http-server.c |  144 +++++++++++++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 115 insertions(+), 29 deletions(-)
+
+diff --git a/http-server.c b/http-server.c
+index 2f1006b..f689cb4 100644
+--- a/http-server.c
++++ b/http-server.c
+@@ -36,6 +36,22 @@ static void logRequest(char *clnt_IP, char *method, char *requestURI, char *http
+     printf("%s \"%s %s %s\" %s\n", clnt_IP, method, requestURI, httpVersion, status);
+ }
+ 
++void errResponse(int clntSocket, char *status) {
++    char headerBuf[1024];
++    int headerLen;
++    int sendLen;
++
++    //build header
++    headerLen = sprintf(headerBuf,      
++            "HTTP/1.0 %s\r\n\r\n<html><body><h1>%s</h1></body></html>",         //HTTP newlines!
++            status, status);              
++    if((sendLen = send(clntSocket, headerBuf, headerLen, 0) != headerLen)) {    //send header
++               perror("send() failed");
++               return;
++        } 
++}
++
++
+ // CHANGE: added an additional parameter
+ void HandleTCPClientMDB(int clntSocket, char *db_filename);
+ void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_root);
+@@ -116,10 +132,7 @@ int main(int argc, char *argv[])
+ }
+ 
+ 
+-void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_root) {
+-
+-    //tokens for parsing
+-    char *token_separators = "\t \r\n"; // tab, space, new line
++void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_root_init) {
+ 
+     FILE *input; 
+     if ((input =  fdopen(clntSocket, "r")) == NULL) { 
+@@ -129,54 +142,127 @@ void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_roo
+     /* get first line of the request */
+     char requestLine[200];
+     fgets(requestLine, 200, input);
+-    //printf("%s\n", requestLine);      //print entire first line 
++    //printf("%s\n", requestLine);      //print entire request line 
+     
+     /* parse request */
+-    int requestLen = strlen(requestLine);
+-    requestLine[requestLen] = '\0';     //null terminate request line
+-    char *clnt_IP = inet_ntoa(clntAddr->sin_addr);
+-    char *method = strtok(requestLine, token_separators);
+-    char *requestURI = strtok(NULL, token_separators);
+-    char *httpVersion = strtok(NULL, token_separators);
+-    char *status;
++    int requestLen;                                             //length of http request
++    if((requestLen = strlen(requestLine)) < 3) {                //check for weird request
++        fclose(input);
++        close(clntSocket);
++        return;
++    }
++    requestLine[requestLen] = '\0';                             //null terminate request line
++    char web_root[500];
++    strcpy(web_root, web_root_init);                            
++    char *clnt_IP = inet_ntoa(clntAddr->sin_addr);              //ip addrress of the client
++    char *token_separators = "\t \r\n";                         //tab, space, new line tokens
++    char *method = strtok(requestLine, token_separators);       //method type (error check for GET only)
++    char *requestURI = strtok(NULL, token_separators);          //original request file path
++    char *end;                                                  //last section of URI request, used for error checking 
++    char *httpVersion = strtok(NULL, token_separators);         //httpVersion of the request
++    char *status;                                               //server response status
++
+ 
+     /* check request for errors*/
+     if(strcmp(method, "GET") != 0) {    //checks for GET method
+         status = "501 Not Implemented";
+-        
+-
+         logRequest(clnt_IP, method, requestURI, httpVersion, status); 
+-
++        errResponse(clntSocket, status);
++        close(clntSocket);
++        fclose(input);
++        return; 
+     }
+ 
+     if(requestURI != NULL) {    //makes sure request URI isnt null
++        strcat(web_root, requestURI);                  //append requestURI to the web_root
+         char startURI = requestURI[0];
+-        if('/' != startURI) {        //checks requestURI starts with '/'
++        if('/' != startURI) {                           //checks requestURI starts with '/'
+                 status = "400 Bad Request";
+                 logRequest(clnt_IP, method, requestURI, httpVersion, status);
+-        }   
+-    }
+-
++                errResponse(clntSocket, status);
++                close(clntSocket);
++                fclose(input);
++                return;
+ 
++        }
++        if(strstr(web_root, "/../") != NULL) {        //checks if "/../" is present in the string
++                status = "400 Bad Request";
++                logRequest(clnt_IP, method, requestURI, httpVersion, status);
++                errResponse(clntSocket, status);
++                close(clntSocket);
++                fclose(input);
++                return;
++
++        }
++        end = strchr(web_root, '/'); 
++        if(strcmp(end, "/..") == 0) { 
++                status = "400 Bad Request";
++                logRequest(clnt_IP, method, requestURI, httpVersion, status); 
++                errResponse(clntSocket, status);
++                close(clntSocket);
++                fclose(input);                
++                return;
++
++        }
++        else if(strcmp(end, "/") == 0) {                //if the request ends with a /
++                                                        //dont set a status yet, just change modded uri
++                strcat(web_root, "index.html");         //append index.html to end of file path
++        }
++    }
+ 
++    //check for correct HTTP protocol
++    if((strcmp(httpVersion, "HTTP/1.0") != 0) && (strcmp(httpVersion, "HTTP/1.1") != 0)) {           
++        status = "501 Not Implemented";
++        logRequest(clnt_IP, method, requestURI, httpVersion, status);
++        errResponse(clntSocket, status);
++        return;
++    }
+ 
+     /* build response */
++    printf("%s\n", web_root);        
++    char outBuf[IOBUFSIZE];
++    char headerBuf[1024];
++    FILE *outFile = fopen(web_root, "r+");
++    if(outFile == NULL) { 
++        status = "404 Not Found";
++        logRequest(clnt_IP, method, requestURI, httpVersion, status);
++        errResponse(clntSocket, status);
++        close(clntSocket);
++        fclose(input);                
++        return;
++    }
++    else {
++        status = "200 OK";      //finally!
++    }
+ 
+-
++    int headerLen;
++    int readSize;
++    int sendLen;
+     
+-
+-
+-
+-
+-
+-
++    //build header
++    headerLen = sprintf(headerBuf, "HTTP/1.0 %s\r\n\r\n", status);              //build header with HTTP newlines
++    if((sendLen = send(clntSocket, headerBuf, headerLen, 0) != headerLen)) {    //send header
++               perror("send() failed");
++               return;
++        } 
++
++    //build body
++    while((readSize = fread(outBuf, IOBUFSIZE, 1, outFile) > 0)) {
++        printf("%s\n", outBuf);
++        if((sendLen = send(clntSocket, outBuf, readSize, 0) != readSize)) {
++               perror("send() failed");
++               return;
++        } 
++    }
+ 
+     //print details to stdout
+-    status = "200 OK";
+     logRequest(clnt_IP, method, requestURI, httpVersion, status); 
+-
+-    fclose(input);
++    
++    //free resources
++    fclose(outFile);
+     close(clntSocket);
++    fclose(input);                
++ 
+ }
+ 
+ 
+-- 
+1.7.9.5
+
+
+From 791237b016a4e9c5c96f7007c7625bfaf977361d Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 19 Apr 2015 19:41:43 -0400
+Subject: [PATCH 05/16] Started part2b, mdb-lookup response
+
+---
+ http-server.c |  156 +++++++++++++++++++++++++++++++++++++++------------------
+ 1 file changed, 108 insertions(+), 48 deletions(-)
+
+diff --git a/http-server.c b/http-server.c
+index f689cb4..b6057e4 100644
+--- a/http-server.c
++++ b/http-server.c
+@@ -37,15 +37,15 @@ static void logRequest(char *clnt_IP, char *method, char *requestURI, char *http
+ }
+ 
+ void errResponse(int clntSocket, char *status) {
+-    char headerBuf[1024];
+-    int headerLen;
++    char outBuf[IOBUFSIZE];
++    int outLen;
+     int sendLen;
+ 
+     //build header
+-    headerLen = sprintf(headerBuf,      
++    outLen = sprintf(outBuf,      
+             "HTTP/1.0 %s\r\n\r\n<html><body><h1>%s</h1></body></html>",         //HTTP newlines!
+             status, status);              
+-    if((sendLen = send(clntSocket, headerBuf, headerLen, 0) != headerLen)) {    //send header
++    if((sendLen = send(clntSocket, outBuf, outLen, 0) != outLen)) {    //send header
+                perror("send() failed");
+                return;
+         } 
+@@ -140,13 +140,15 @@ void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_roo
+     }
+ 
+     /* get first line of the request */
+-    char requestLine[200];
+-    fgets(requestLine, 200, input);
++    char requestLine[IOBUFSIZE];
++    char outBuf[IOBUFSIZE];
++    int outLen;
++    fgets(requestLine, IOBUFSIZE, input);
+     //printf("%s\n", requestLine);      //print entire request line 
+     
+     /* parse request */
+     int requestLen;                                             //length of http request
+-    if((requestLen = strlen(requestLine)) < 3) {                //check for weird request
++    if((requestLen = strlen(requestLine)) < 4) {                //check for weird request
+         fclose(input);
+         close(clntSocket);
+         return;
+@@ -161,6 +163,8 @@ void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_roo
+     char *end;                                                  //last section of URI request, used for error checking 
+     char *httpVersion = strtok(NULL, token_separators);         //httpVersion of the request
+     char *status;                                               //server response status
++    int rqType = 1;                                             //type of request 
++                                                                //1 for static, 2 for mdb-lookup with key, 0 for mdb-lookup
+ 
+ 
+     /* check request for errors*/
+@@ -174,41 +178,78 @@ void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_roo
+     }
+ 
+     if(requestURI != NULL) {    //makes sure request URI isnt null
+-        strcat(web_root, requestURI);                  //append requestURI to the web_root
+-        char startURI = requestURI[0];
+-        if('/' != startURI) {                           //checks requestURI starts with '/'
+-                status = "400 Bad Request";
+-                logRequest(clnt_IP, method, requestURI, httpVersion, status);
+-                errResponse(clntSocket, status);
+-                close(clntSocket);
+-                fclose(input);
+-                return;
+-
+-        }
+-        if(strstr(web_root, "/../") != NULL) {        //checks if "/../" is present in the string
+-                status = "400 Bad Request";
+-                logRequest(clnt_IP, method, requestURI, httpVersion, status);
+-                errResponse(clntSocket, status);
+-                close(clntSocket);
+-                fclose(input);
+-                return;
+ 
+-        }
+-        end = strchr(web_root, '/'); 
+-        if(strcmp(end, "/..") == 0) { 
+-                status = "400 Bad Request";
+-                logRequest(clnt_IP, method, requestURI, httpVersion, status); 
+-                errResponse(clntSocket, status);
+-                close(clntSocket);
+-                fclose(input);                
+-                return;
++        //check for mdb-lookup URI request
++        if(strcmp(requestURI, "/mdb-lookup") == 0) {
++                const char *htmlForm = 
++                "<html><body>\n<h1>mdb-lookup</h1>\n"
++                "<p>\n"
++                "<form method=GET action=/mdb-lookup>\n"
++                "lookup: <input type=text name=key>\n"
++                "<input type=submit>\n"
++                "</form>\n"
++                "<p></body></html>\n";
++        
++                status = "200 OK";
++                outLen = sprintf(outBuf, "HTTP/1.0 %s\r\n%s", status, htmlForm);
++                rqType = 0;     //change rqType to 0
++        }        
++        else if(strncmp(requestURI, "/mdb-lookup?key", 15) == 0) {
++                const char *htmlForm = 
++                "<html><body>\n<h1>mdb-lookup</h1>\n"
++                "<p>\n"
++                "<form method=GET action=/mdb-lookup>\n"
++                "lookup: <input type=text name=key>\n"
++                "<input type=submit>\n"
++                "</form>\n" "<p>\n<p>"
++                "<table border>\n";
++         
++                status = "200 OK";
++                outLen = sprintf(outBuf, "HTTP/1.0 %s\r\n%s", status, htmlForm);
++                rqType = 2;     //change rqType to 2
+ 
+         }
+-        else if(strcmp(end, "/") == 0) {                //if the request ends with a /
+-                                                        //dont set a status yet, just change modded uri
+-                strcat(web_root, "index.html");         //append index.html to end of file path
++        else {
++
++                strcat(web_root, requestURI);                  //append requestURI to the web_root
++                char startURI = requestURI[0];
++                if('/' != startURI) {                           //checks requestURI starts with '/'
++                        status = "400 Bad Request";
++                        logRequest(clnt_IP, method, requestURI, httpVersion, status);
++                        errResponse(clntSocket, status);
++                        close(clntSocket);
++                        fclose(input);
++                        return;
++
++                }
++                if(strstr(web_root, "/../") != NULL) {        //checks if "/../" is present in the string
++                        status = "400 Bad Request";
++                        logRequest(clnt_IP, method, requestURI, httpVersion, status);
++                        errResponse(clntSocket, status);
++                        close(clntSocket);
++                        fclose(input);
++                        return;
++
++                }
++                end = strchr(web_root, '/'); 
++                if(strcmp(end, "/..") == 0) { 
++                        status = "400 Bad Request";
++                        logRequest(clnt_IP, method, requestURI, httpVersion, status); 
++                        errResponse(clntSocket, status);
++                        close(clntSocket);
++                        fclose(input);                
++                        return;
++
++                }
++                else if(strcmp(end, "/") == 0) {                //if the request ends with a /
++                                                                //dont set a status yet, just change modded uri
++                        strcat(web_root, "index.html");         //append index.html to end of file path
++                }
+         }
+     }
++    else {      //if requestURI is null
++        strcat(web_root, "/index.html");
++    }
+ 
+     //check for correct HTTP protocol
+     if((strcmp(httpVersion, "HTTP/1.0") != 0) && (strcmp(httpVersion, "HTTP/1.1") != 0)) {           
+@@ -219,10 +260,8 @@ void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_roo
+     }
+ 
+     /* build response */
+-    printf("%s\n", web_root);        
+-    char outBuf[IOBUFSIZE];
+-    char headerBuf[1024];
+-    FILE *outFile = fopen(web_root, "r+");
++    //printf("%s\n", web_root);        
++    FILE *outFile = fopen(web_root, "r+");      //open file
+     if(outFile == NULL) { 
+         status = "404 Not Found";
+         logRequest(clnt_IP, method, requestURI, httpVersion, status);
+@@ -231,16 +270,40 @@ void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_roo
+         fclose(input);                
+         return;
+     }
+-    else {
+-        status = "200 OK";      //finally!
++
++    //if weve made it this far, we can set status to 200 OK
++    //and log the request to stdout
++    status = "200 OK";          //finally!
++    logRequest(clnt_IP, method, requestURI, httpVersion, status);       
++    fflush(stdout);
++
++    //build header 
++    if(rqType != 1) {           //weve hit a mdb-llokup type request, so outBuf has a header already
++        if(send(clntSocket, outBuf, outLen, 0) != outLen) {             //send header
++            fclose(input_file);
++            die("send() has failed");
++        }
+     }
++    else {                      //serving a static page, havent constructed header yet
++        outLen = sprintf(outBuf, "HTTP/1.0 %s\r\n", status);            //construct header
++        if(send(clntSocket, outBuf, outLen, 0) != outLen) {             //send header
++            fclose(input_file);
++            die("send() has failed");
++        }
++    }
++
++    if(rqType 
+ 
++
++    
++    
++    
+     int headerLen;
+     int readSize;
+     int sendLen;
+     
+     //build header
+-    headerLen = sprintf(headerBuf, "HTTP/1.0 %s\r\n\r\n", status);              //build header with HTTP newlines
++    headerLen = sprintf(headerBuf, "HTTP/1.0 %s\r\n\r\n", status);              //HTTP newlines
+     if((sendLen = send(clntSocket, headerBuf, headerLen, 0) != headerLen)) {    //send header
+                perror("send() failed");
+                return;
+@@ -248,16 +311,13 @@ void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_roo
+ 
+     //build body
+     while((readSize = fread(outBuf, IOBUFSIZE, 1, outFile) > 0)) {
+-        printf("%s\n", outBuf);
++        //printf("%s\n", outBuf);
+         if((sendLen = send(clntSocket, outBuf, readSize, 0) != readSize)) {
+                perror("send() failed");
+                return;
+         } 
+     }
+ 
+-    //print details to stdout
+-    logRequest(clnt_IP, method, requestURI, httpVersion, status); 
+-    
+     //free resources
+     fclose(outFile);
+     close(clntSocket);
+-- 
+1.7.9.5
+
+
+From dea9f4bb14fe480f361881feaf826fc325977ff9 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 19 Apr 2015 23:09:40 -0400
+Subject: [PATCH 06/16] finished static, writing mdblookup table stuff
+
+---
+ http-server.c |  240 +++++++++++++++++----------------------------------------
+ 1 file changed, 72 insertions(+), 168 deletions(-)
+
+diff --git a/http-server.c b/http-server.c
+index b6057e4..503f8b6 100644
+--- a/http-server.c
++++ b/http-server.c
+@@ -53,8 +53,7 @@ void errResponse(int clntSocket, char *status) {
+ 
+ 
+ // CHANGE: added an additional parameter
+-void HandleTCPClientMDB(int clntSocket, char *db_filename);
+-void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_root);
++void HandleTCPClient(int clntSocket, int mdbSock, struct sockaddr_in *clntAddr, char *web_root);
+ 
+ 
+ int main(int argc, char *argv[])
+@@ -80,20 +79,49 @@ int main(int argc, char *argv[])
+         exit(1);
+     }
+ 
+-    echoServPort = atoi(argv[1]);  /* 1st arg:  local port */
+-    char *web_root = argv[2];
+-    char *mdb_lookup_host = argv[3];
+-    unsigned short mdb_lookup_port = atoi(argv[4]);
++    echoServPort = atoi(argv[1]);                       //1st arg: local port 
++    char *web_root = argv[2];                           //root file path
++    char *mdb_lookup_server = argv[3];                  //mdb_lookup_server hostname
++    unsigned short mdb_server_port = atoi(argv[4]);
++    
++    ////////////////////////////////////////////
++    /* Construct mdb-server address structure */
++    int mdbSock;                                        //socket for mdb_lookup server
++    struct sockaddr_in mdbserverAddr;                   //address structure for mdb-lookup server
++    char *mdb_server_ip;                                //mdb_lookup_server ip address
++
++    struct hostent *mdbHE;
++    if((mdbHE = gethostbyname(mdb_server_server)) == NULL) {
++                die("Failed to get server IP address");
++    }
++    mdb_server_ip = inet_ntoa(*(struct in_addr *)mdbHE->h_addr);
++
++    //Create Socket for mdb_lookup_server
++    if((mdbSock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
++                die("mdb socket() failed");
++
++    //construct mdb_server address structure
++    memset(&mdbserverAddr, 0, sizeof(mdbserverAddr));
++    mdbserverAddr.sin_family = AF_INET;
++    mdbserverAddr.sin_addr.s_addr = inet_addr(mdb_server_ip);
++    mdbserverAddr.sin_port = htons(mdb_server_port);
+ 
++    //make connection to mdb_server
++    if(connect(mdbSock, (struct sockaddr *)&mdbserverAddr, sizeof(mdbserverAddr)) < 0)
++                die("Connection to mdb failed");
++
++
++
++    ////////////////////////////////////////////
+     /* Create socket for incoming connections */
+     if ((servSock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
+         die("socket() failed");
+-      
++
+     /* Construct local address structure */
+-    memset(&echoServAddr, 0, sizeof(echoServAddr));   // Zero out structure
+-    echoServAddr.sin_family = AF_INET;                // Internet address family
+-    echoServAddr.sin_addr.s_addr = htonl(INADDR_ANY); // Any incoming interface
+-    echoServAddr.sin_port = htons(echoServPort);      // Local port
++    memset(&echoServAddr, 0, sizeof(echoServAddr));     //Zero out structure
++    echoServAddr.sin_family = AF_INET;                  //Internet address family
++    echoServAddr.sin_addr.s_addr = htonl(INADDR_ANY);   //Any incoming interface
++    echoServAddr.sin_port = htons(echoServPort);        //Local port
+ 
+     /* Bind to the local address */
+     if (bind(servSock, (struct sockaddr *)&echoServAddr, 
+@@ -121,7 +149,7 @@ int main(int argc, char *argv[])
+ 		inet_ntoa(echoClntAddr.sin_addr));
+         */
+ 
+-        HandleTCPClient(clntSock, &echoClntAddr, web_root);
++        HandleTCPClient(clntSock, mdbSock, &echoClntAddr, web_root);
+ 
+         /*       
+ 	fprintf(stderr, "connection terminated from: %s\n", 
+@@ -132,7 +160,7 @@ int main(int argc, char *argv[])
+ }
+ 
+ 
+-void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_root_init) {
++void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr, char *web_root_init) {
+ 
+     FILE *input; 
+     if ((input =  fdopen(clntSocket, "r")) == NULL) { 
+@@ -164,7 +192,7 @@ void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_roo
+     char *httpVersion = strtok(NULL, token_separators);         //httpVersion of the request
+     char *status;                                               //server response status
+     int rqType = 1;                                             //type of request 
+-                                                                //1 for static, 2 for mdb-lookup with key, 0 for mdb-lookup
++                                                                //1 for static, 2 for mdb-lookup w/ table, 0 for mdb-lookup w/ form only
+ 
+ 
+     /* check request for errors*/
+@@ -279,7 +307,7 @@ void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_roo
+ 
+     //build header 
+     if(rqType != 1) {           //weve hit a mdb-llokup type request, so outBuf has a header already
+-        if(send(clntSocket, outBuf, outLen, 0) != outLen) {             //send header
++        if(send(clntSocket, outBuf, outLen, 0) != outLen) {             //send header and mdb-lookup form
+             fclose(input_file);
+             die("send() has failed");
+         }
+@@ -292,167 +320,43 @@ void HandleTCPClient(int clntSocket, struct sockaddr_in *clntAddr, char *web_roo
+         }
+     }
+ 
+-    if(rqType 
++    //build body
++    //static
++    if(rqType == 1) {                           //deal with static files
++        memset(outBuf, '\0', strlen(outBuf));   //reset outBuf
++        while((outLen = fread(outBuf, 1, sizeof(outBuf), outFile)) > 0) { 
++                if(ferror(outFile)) {
++                        perror ("send() failed"); 
++                        fclose(outFile);
++                        fclose(input);
++                        return;
++                }
++                if(send(clntSocket, outBuf, outLen, 0) != outLen) {
++                        fclose(outFile);
++                        fclose(input);
++                        return;
++                }
++        }    
++    }
++
++    else if(rqType == 2) {      //mdb-lookup request with search key
++        char mdbBuf[IOBUFSIZE];
++        char *lookupKey = strstr(requestURI, "=") + 1;
++        sprintf(mdbBuf, "%s\n", lookupKey);
++        int mdbBufLen = strlen(mdbBuf);
++        
++        //
++        }
++
+ 
+ 
+-    
+-    
+-    
+-    int headerLen;
+-    int readSize;
+-    int sendLen;
+-    
+-    //build header
+-    headerLen = sprintf(headerBuf, "HTTP/1.0 %s\r\n\r\n", status);              //HTTP newlines
+-    if((sendLen = send(clntSocket, headerBuf, headerLen, 0) != headerLen)) {    //send header
+-               perror("send() failed");
+-               return;
+-        } 
+ 
+-    //build body
+-    while((readSize = fread(outBuf, IOBUFSIZE, 1, outFile) > 0)) {
+-        //printf("%s\n", outBuf);
+-        if((sendLen = send(clntSocket, outBuf, readSize, 0) != readSize)) {
+-               perror("send() failed");
+-               return;
+-        } 
+-    }
+ 
+     //free resources
+     fclose(outFile);
+     close(clntSocket);
++    close(mdbSocket);
+     fclose(input);                
+  
+ }
+ 
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-
+-void HandleTCPClientMDB(int clntSocket, char *db_filename)
+-{
+-    // CHANGE: this function is what used to be main() in mdb-lookup.c
+-
+-    /*
+-     * open the database file specified in the argument
+-     */
+-
+-    FILE *fp = fopen(db_filename, "rb"); // open in read, binary mode
+-    if (fp == NULL) 
+-	die(db_filename);
+-
+-    /*
+-     * read all records into memory
+-     */
+-
+-    struct List list;
+-    initList(&list);
+-
+-    struct MdbRec r;
+-    struct Node *node = NULL;
+-
+-    while (fread(&r, sizeof(r), 1, fp) == 1) {
+-
+-	// allocate memory for a new record and copy into it the one
+-	// that was just read from the database.
+-	struct MdbRec *rec = (struct MdbRec *)malloc(sizeof(r));
+-	if (!rec)
+-	    die("malloc failed");
+-	memcpy(rec, &r, sizeof(r));
+-	
+-	// add the record to the linked list.
+-	node = addAfter(&list, node, rec);
+-	if (node == NULL) 
+-	    die("addAfter() failed");
+-    }
+-
+-    // see if fread() produced error
+-    if (ferror(fp)) 
+-	die(db_filename);
+-
+-    /*
+-     * lookup loop
+-     */
+-
+-    // CHANGE: wrap the socket with a FILE* using fdopen()
+-    FILE *input = fdopen(clntSocket, "r"); 
+-    if (input == NULL) 
+-	die("fdopen failed");
+-
+-    char line[1000];
+-    char key[KeyMax + 1];
+-
+-    char out_buf[1000];
+-    int len;
+-    int res;
+-
+-    // CHANGE: we don't do lookup prompt in this socket version of the
+-    // porgram as it interferes with detecting the end of result using
+-    // a blank line.
+-
+-    while (fgets(line, sizeof(line), input) != NULL) {
+-	
+-	// must null-terminate the string manually after strncpy().
+-	strncpy(key, line, sizeof(key) - 1);
+-	key[sizeof(key) - 1] = '\0';
+-
+-	// if newline is there, remove it.
+-	size_t last = strlen(key) - 1;
+-	if (key[last] == '\n')
+-	    key[last] = '\0';
+-
+-	// traverse the list, printing out the matching records
+-	struct Node *node = list.head;
+-	int recNo = 1;
+-	while (node) {
+-	    struct MdbRec *rec = (struct MdbRec *)node->data;
+-	    if (strstr(rec->name, key) || strstr(rec->msg, key)) {
+-		// CHANGE: we changed printf() into sprintf() & send()
+-		len = sprintf(out_buf, "%4d: {%s} said {%s}\n", recNo, rec->name, rec->msg);
+-		if ((res = send(clntSocket, out_buf, len, 0)) != len) {
+-		    perror("send() failed");
+-		    break;
+-		}
+-	    }
+-	    node = node->next;
+-	    recNo++;
+-	}
+-
+-	// CHANGE: we changed printf() into sprintf() & send()
+-	// CHANGE: send a blank line to indicate the end of search result
+-	len = sprintf(out_buf, "\n");
+-	if ((res = send(clntSocket, out_buf, len, 0)) != len) 
+-	    perror("send() failed");
+-    }
+-
+-    // CHANGE: check 'input' rather than 'stdin'
+-    //
+-    // see if fgets() produced error
+-    if (ferror(input)) {
+-	perror("fgets() failed");
+-    }
+-
+-    /*
+-     * clean up and quit
+-     */
+-
+-    // free all the records
+-    traverseList(&list, &free);
+-
+-    removeAllNodes(&list);
+-
+-    // close the database file
+-    fclose(fp);
+-
+-    // CHANGE: close the socket by closing the FILE* wrapper
+-    fclose(input);
+-}
+-
+-- 
+1.7.9.5
+
+
+From b27096e0f32225206d7f1e9ce1c352472332bafe Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 20 Apr 2015 00:38:35 -0400
+Subject: [PATCH 07/16] possible working copy, debugging
+
+---
+ http-server.c |   59 +++++++++++++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 49 insertions(+), 10 deletions(-)
+
+diff --git a/http-server.c b/http-server.c
+index 503f8b6..befa0ac 100644
+--- a/http-server.c
++++ b/http-server.c
+@@ -19,6 +19,7 @@
+ #include <string.h>     /* for memset() */
+ #include <unistd.h>     /* for close() */
+ #include <signal.h>     /* for signal() */
++#include <netdb.h>      /* for gethostbyname() */
+ 
+ #define MAXPENDING 5    /* Maximum outstanding connection requests */
+ #define IOBUFSIZE 4096  /*Send and Recieve buffer size */ 
+@@ -91,7 +92,7 @@ int main(int argc, char *argv[])
+     char *mdb_server_ip;                                //mdb_lookup_server ip address
+ 
+     struct hostent *mdbHE;
+-    if((mdbHE = gethostbyname(mdb_server_server)) == NULL) {
++    if((mdbHE = gethostbyname(mdb_lookup_server)) == NULL) {
+                 die("Failed to get server IP address");
+     }
+     mdb_server_ip = inet_ntoa(*(struct in_addr *)mdbHE->h_addr);
+@@ -308,14 +309,14 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+     //build header 
+     if(rqType != 1) {           //weve hit a mdb-llokup type request, so outBuf has a header already
+         if(send(clntSocket, outBuf, outLen, 0) != outLen) {             //send header and mdb-lookup form
+-            fclose(input_file);
++            fclose(input);
+             die("send() has failed");
+         }
+     }
+     else {                      //serving a static page, havent constructed header yet
+         outLen = sprintf(outBuf, "HTTP/1.0 %s\r\n", status);            //construct header
+         if(send(clntSocket, outBuf, outLen, 0) != outLen) {             //send header
+-            fclose(input_file);
++            fclose(input);
+             die("send() has failed");
+         }
+     }
+@@ -339,23 +340,61 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+         }    
+     }
+ 
++    //build body
++    //mdb lookup table
+     else if(rqType == 2) {      //mdb-lookup request with search key
+         char mdbBuf[IOBUFSIZE];
++        char mdbBuf_out[IOBUFSIZE];
+         char *lookupKey = strstr(requestURI, "=") + 1;
+         sprintf(mdbBuf, "%s\n", lookupKey);
+         int mdbBufLen = strlen(mdbBuf);
+-        
+-        //
+-        }
+-
+-
+ 
++        if(send(mdbSocket, mdbBuf, mdbBufLen, 0) != mdbBufLen) { 
++                fclose(input);
++                die("send() to mdbsocket failed");
++        }
++        memset(mdbBuf, '\0', sizeof(mdbBuf));
++        char *getRes;
+ 
++        FILE *mdbSocketFile;
++        if((mdbSocketFile = fdopen(mdbSocket, "r")) == NULL) {
++                fclose(input);
++                die("send() to mdbsocket failed");
++        }
++        int yellowOn = 1;                       //turn yellow background on for first iteration
++        while((getRes = fgets(mdbBuf, sizeof(mdbBuf), mdbSocketFile)) && 
++                strcmp(getRes, "\n") != 0) {    //ignore newlines 
++                if(yellowOn) {                  //print with yellow background
++                        sprintf(mdbBuf_out, "<tr><td %s>%s\n", "bgcolor=yellow", mdbBuf);
++                        yellowOn = 0;           //turn yellow background off for next iteration
++                }
++                else{
++                        sprintf(mdbBuf_out, "<tr><td>%s\n", mdbBuf);
++                        yellowOn = 1;           //turn yellow background on for next iteration
++                }
++                if(send(clntSocket, mdbBuf_out, strlen(mdbBuf_out), 0) != strlen(mdbBuf_out)) {
++                        fclose(mdbSocketFile);
++                        fclose(input);
++                        die("send() to clntSocket failed");
++                }
++                memset(mdbBuf_out, '\0', sizeof(mdbBuf_out));
++        }
++        
++        sprintf(mdbBuf_out, "</table></p></body></html>\n");
++        if(send(clntSocket, mdbBuf_out, strlen(mdbBuf_out), 0) != strlen(mdbBuf_out)) {
++                fclose(mdbSocketFile);
++                fclose(input);
++                die("send() to clntSocket failed at footer");
++        }
++        if(ferror(mdbSocketFile)) { 
++                fclose(mdbSocketFile);
++                fclose(input);
++                die("send() to clntSocket failed at fread");
++        }
++    }
+ 
+     //free resources
+     fclose(outFile);
+-    close(clntSocket);
+-    close(mdbSocket);
+     fclose(input);                
+  
+ }
+-- 
+1.7.9.5
+
+
+From d824b7437c2d85c034fa001eef36f9f3d90afbf7 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 20 Apr 2015 01:29:14 -0400
+Subject: [PATCH 08/16] kind of works
+
+---
+ http-server.c |   37 +++++++++++++++++++++----------------
+ 1 file changed, 21 insertions(+), 16 deletions(-)
+
+diff --git a/http-server.c b/http-server.c
+index befa0ac..eb88a07 100644
+--- a/http-server.c
++++ b/http-server.c
+@@ -220,7 +220,7 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                 "<p></body></html>\n";
+         
+                 status = "200 OK";
+-                outLen = sprintf(outBuf, "HTTP/1.0 %s\r\n%s", status, htmlForm);
++                outLen = sprintf(outBuf, "HTTP/1.0 %s\r\n\r\n%s", status, htmlForm);
+                 rqType = 0;     //change rqType to 0
+         }        
+         else if(strncmp(requestURI, "/mdb-lookup?key", 15) == 0) {
+@@ -234,7 +234,7 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                 "<table border>\n";
+          
+                 status = "200 OK";
+-                outLen = sprintf(outBuf, "HTTP/1.0 %s\r\n%s", status, htmlForm);
++                outLen = sprintf(outBuf, "HTTP/1.0 %s\r\n\r\n%s", status, htmlForm);
+                 rqType = 2;     //change rqType to 2
+ 
+         }
+@@ -291,7 +291,7 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+     /* build response */
+     //printf("%s\n", web_root);        
+     FILE *outFile = fopen(web_root, "r+");      //open file
+-    if(outFile == NULL) { 
++    if(rqType == 1 && outFile == NULL) { 
+         status = "404 Not Found";
+         logRequest(clnt_IP, method, requestURI, httpVersion, status);
+         errResponse(clntSocket, status);
+@@ -306,25 +306,23 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+     logRequest(clnt_IP, method, requestURI, httpVersion, status);       
+     fflush(stdout);
+ 
+-    //build header 
+-    if(rqType != 1) {           //weve hit a mdb-llokup type request, so outBuf has a header already
++    //build responses
++    if(rqType == 0) {           //weve hit a plain mdb-lookup prompt request, so outBuf has a header & body
+         if(send(clntSocket, outBuf, outLen, 0) != outLen) {             //send header and mdb-lookup form
+             fclose(input);
+             die("send() has failed");
+         }
++        //thats it, rqType == 0 just needs the form to be sent
+     }
+-    else {                      //serving a static page, havent constructed header yet
+-        outLen = sprintf(outBuf, "HTTP/1.0 %s\r\n", status);            //construct header
++    else if (rqType == 1) {                      //serving a static page, havent constructed header yet
++        outLen = sprintf(outBuf, "HTTP/1.0 %s\r\n\r\n", status);        //construct header
+         if(send(clntSocket, outBuf, outLen, 0) != outLen) {             //send header
+             fclose(input);
+             die("send() has failed");
+         }
+-    }
+-
+-    //build body
+-    //static
+-    if(rqType == 1) {                           //deal with static files
+         memset(outBuf, '\0', strlen(outBuf));   //reset outBuf
++        
++        //now get and send body text
+         while((outLen = fread(outBuf, 1, sizeof(outBuf), outFile)) > 0) { 
+                 if(ferror(outFile)) {
+                         perror ("send() failed"); 
+@@ -346,12 +344,20 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+         char mdbBuf[IOBUFSIZE];
+         char mdbBuf_out[IOBUFSIZE];
+         char *lookupKey = strstr(requestURI, "=") + 1;
++        
++        printf("%s\n", lookupKey);
+         sprintf(mdbBuf, "%s\n", lookupKey);
+         int mdbBufLen = strlen(mdbBuf);
+ 
++        //send header and mdb-lookup form
++        if(send(clntSocket, outBuf, mdbBufLen, 0) != mdbBufLen) {
++                 fclose(input);
++                 die("send() #1 to mdbsocket failed");
++        }
++
+         if(send(mdbSocket, mdbBuf, mdbBufLen, 0) != mdbBufLen) { 
+                 fclose(input);
+-                die("send() to mdbsocket failed");
++                die("send() #2 to mdbsocket failed");
+         }
+         memset(mdbBuf, '\0', sizeof(mdbBuf));
+         char *getRes;
+@@ -359,7 +365,7 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+         FILE *mdbSocketFile;
+         if((mdbSocketFile = fdopen(mdbSocket, "r")) == NULL) {
+                 fclose(input);
+-                die("send() to mdbsocket failed");
++                die("send() #3 to mdbsocket failed");
+         }
+         int yellowOn = 1;                       //turn yellow background on for first iteration
+         while((getRes = fgets(mdbBuf, sizeof(mdbBuf), mdbSocketFile)) && 
+@@ -392,9 +398,8 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                 die("send() to clntSocket failed at fread");
+         }
+     }
+-
++    printf("%s\n", requestLine);
+     //free resources
+-    fclose(outFile);
+     fclose(input);                
+  
+ }
+-- 
+1.7.9.5
+
+
+From 39f95bb08d78be3db4877728980bd0e1b148f9b8 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 20 Apr 2015 15:09:06 -0400
+Subject: [PATCH 09/16] mdb-lookup works; havent tested valgrind yet.....
+
+---
+ http-server.c |   46 ++++++++++++++++++++++++----------------------
+ 1 file changed, 24 insertions(+), 22 deletions(-)
+
+diff --git a/http-server.c b/http-server.c
+index eb88a07..c85a2ec 100644
+--- a/http-server.c
++++ b/http-server.c
+@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
+     struct sockaddr_in mdbserverAddr;                   //address structure for mdb-lookup server
+     char *mdb_server_ip;                                //mdb_lookup_server ip address
+ 
+-    struct hostent *mdbHE;
++    struct hostent *mdbHE;                              //code from lab 6 instructions - gets IP
+     if((mdbHE = gethostbyname(mdb_lookup_server)) == NULL) {
+                 die("Failed to get server IP address");
+     }
+@@ -151,6 +151,9 @@ int main(int argc, char *argv[])
+         */
+ 
+         HandleTCPClient(clntSock, mdbSock, &echoClntAddr, web_root);
++        //close(clntSock);        //close the client socket after the client disconnects
++                                //but leave the mdbServer socket alone, because
++                                //it is still needed for future connections
+ 
+         /*       
+ 	fprintf(stderr, "connection terminated from: %s\n", 
+@@ -177,9 +180,8 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+     
+     /* parse request */
+     int requestLen;                                             //length of http request
+-    if((requestLen = strlen(requestLine)) < 4) {                //check for weird request
+-        fclose(input);
+-        close(clntSocket);
++    if((requestLen = strlen(requestLine)) < 4) {                //check for weird request,
++        fclose(input);                                          //the phantom GET request from Chrome
+         return;
+     }
+     requestLine[requestLen] = '\0';                             //null terminate request line
+@@ -201,7 +203,6 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+         status = "501 Not Implemented";
+         logRequest(clnt_IP, method, requestURI, httpVersion, status); 
+         errResponse(clntSocket, status);
+-        close(clntSocket);
+         fclose(input);
+         return; 
+     }
+@@ -246,7 +247,6 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                         status = "400 Bad Request";
+                         logRequest(clnt_IP, method, requestURI, httpVersion, status);
+                         errResponse(clntSocket, status);
+-                        close(clntSocket);
+                         fclose(input);
+                         return;
+ 
+@@ -255,7 +255,6 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                         status = "400 Bad Request";
+                         logRequest(clnt_IP, method, requestURI, httpVersion, status);
+                         errResponse(clntSocket, status);
+-                        close(clntSocket);
+                         fclose(input);
+                         return;
+ 
+@@ -265,7 +264,6 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                         status = "400 Bad Request";
+                         logRequest(clnt_IP, method, requestURI, httpVersion, status); 
+                         errResponse(clntSocket, status);
+-                        close(clntSocket);
+                         fclose(input);                
+                         return;
+ 
+@@ -291,17 +289,16 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+     /* build response */
+     //printf("%s\n", web_root);        
+     FILE *outFile = fopen(web_root, "r+");      //open file
+-    if(rqType == 1 && outFile == NULL) { 
+-        status = "404 Not Found";
++    if(rqType == 1 && outFile == NULL) {        //if we are looking for a static file and it is NULL, 
++        status = "404 Not Found";               //then we havent found it :( 
+         logRequest(clnt_IP, method, requestURI, httpVersion, status);
+         errResponse(clntSocket, status);
+-        close(clntSocket);
+         fclose(input);                
+         return;
+     }
+ 
+     //if weve made it this far, we can set status to 200 OK
+-    //and log the request to stdout
++    //and log the 200 OK request to stdout
+     status = "200 OK";          //finally!
+     logRequest(clnt_IP, method, requestURI, httpVersion, status);       
+     fflush(stdout);
+@@ -314,6 +311,7 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+         }
+         //thats it, rqType == 0 just needs the form to be sent
+     }
++
+     else if (rqType == 1) {                      //serving a static page, havent constructed header yet
+         outLen = sprintf(outBuf, "HTTP/1.0 %s\r\n\r\n", status);        //construct header
+         if(send(clntSocket, outBuf, outLen, 0) != outLen) {             //send header
+@@ -323,6 +321,7 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+         memset(outBuf, '\0', strlen(outBuf));   //reset outBuf
+         
+         //now get and send body text
++        //read into outBuf:
+         while((outLen = fread(outBuf, 1, sizeof(outBuf), outFile)) > 0) { 
+                 if(ferror(outFile)) {
+                         perror ("send() failed"); 
+@@ -330,6 +329,7 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                         fclose(input);
+                         return;
+                 }
++                //send outBuf to client:
+                 if(send(clntSocket, outBuf, outLen, 0) != outLen) {
+                         fclose(outFile);
+                         fclose(input);
+@@ -338,28 +338,28 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+         }    
+     }
+ 
+-    //build body
+     //mdb lookup table
+     else if(rqType == 2) {      //mdb-lookup request with search key
+         char mdbBuf[IOBUFSIZE];
+         char mdbBuf_out[IOBUFSIZE];
+         char *lookupKey = strstr(requestURI, "=") + 1;
+         
+-        printf("%s\n", lookupKey);
+-        sprintf(mdbBuf, "%s\n", lookupKey);
+-        int mdbBufLen = strlen(mdbBuf);
++        //printf("%s\n", lookupKey);
++        sprintf(mdbBuf, "%s\n", lookupKey);     //read the lookup key into mdbBuf
++        int mdbBufLen = strlen(mdbBuf);         //so it can be sent to mdbServer
+ 
+-        //send header and mdb-lookup form
+-        if(send(clntSocket, outBuf, mdbBufLen, 0) != mdbBufLen) {
++        //send header and mdb-lookup form to browser
++        if(send(clntSocket, outBuf, outLen, 0) != outLen) {
+                  fclose(input);
+-                 die("send() #1 to mdbsocket failed");
++                 die("send() #1 to clntSocket failed");
+         }
+ 
++        //send lookupKey to mdbLookup server
+         if(send(mdbSocket, mdbBuf, mdbBufLen, 0) != mdbBufLen) { 
+                 fclose(input);
+                 die("send() #2 to mdbsocket failed");
+         }
+-        memset(mdbBuf, '\0', sizeof(mdbBuf));
++        memset(mdbBuf, '\0', sizeof(mdbBuf));   //reset mdbBuf so we can read results in
+         char *getRes;
+ 
+         FILE *mdbSocketFile;
+@@ -367,7 +367,10 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                 fclose(input);
+                 die("send() #3 to mdbsocket failed");
+         }
++
++        //send mdbLookup table to browser
+         int yellowOn = 1;                       //turn yellow background on for first iteration
++        //recieve mdbLookup response from mdbLookup server
+         while((getRes = fgets(mdbBuf, sizeof(mdbBuf), mdbSocketFile)) && 
+                 strcmp(getRes, "\n") != 0) {    //ignore newlines 
+                 if(yellowOn) {                  //print with yellow background
+@@ -386,6 +389,7 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                 memset(mdbBuf_out, '\0', sizeof(mdbBuf_out));
+         }
+         
++        //send table footer
+         sprintf(mdbBuf_out, "</table></p></body></html>\n");
+         if(send(clntSocket, mdbBuf_out, strlen(mdbBuf_out), 0) != strlen(mdbBuf_out)) {
+                 fclose(mdbSocketFile);
+@@ -398,9 +402,7 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                 die("send() to clntSocket failed at fread");
+         }
+     }
+-    printf("%s\n", requestLine);
+     //free resources
+     fclose(input);                
+- 
+ }
+ 
+-- 
+1.7.9.5
+
+
+From 849f7c8407bad15caf42cc9ae3f6ad47e07e5f6c Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 21 Apr 2015 21:02:59 -0400
+Subject: [PATCH 10/16] debugging changes
+
+---
+ Makefile      |    2 +-
+ http-server.c |   20 +++++++++++++-------
+ 2 files changed, 14 insertions(+), 8 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 44cb77c..9634129 100644
+--- a/Makefile
++++ b/Makefile
+@@ -26,7 +26,7 @@ clean:
+ 	ls -alF
+ .PHONY: valgrind
+ valgrind: 
+-	valgrind --leak-check=full --show-reachable=yes ./mdb-lookup-server my-mdb 1111
++	valgrind --leak-check=full --track-origins=yes --show-reachable=yes ./http-server 8887 /home/jpf2141/html localhost 9998
+ 
+ .PHONY: all
+ all: clean default
+diff --git a/http-server.c b/http-server.c
+index c85a2ec..97b075d 100644
+--- a/http-server.c
++++ b/http-server.c
+@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
+         */
+ 
+         HandleTCPClient(clntSock, mdbSock, &echoClntAddr, web_root);
+-        //close(clntSock);        //close the client socket after the client disconnects
++        close(clntSock);        //close the client socket after the client disconnects
+                                 //but leave the mdbServer socket alone, because
+                                 //it is still needed for future connections
+ 
+@@ -259,18 +259,20 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                         return;
+ 
+                 }
+-                end = strchr(web_root, '/'); 
++                end = &requestURI[strlen(requestURI) - 3]; 
++                printf("end: %s\n\n", end);
+                 if(strcmp(end, "/..") == 0) { 
+                         status = "400 Bad Request";
+                         logRequest(clnt_IP, method, requestURI, httpVersion, status); 
+                         errResponse(clntSocket, status);
+-                        fclose(input);                
++                        fclose(input);  
+                         return;
+ 
+                 }
+-                else if(strcmp(end, "/") == 0) {                //if the request ends with a /
++                else if(requestURI[strlen(requestURI)-1] == '/') {      //if the request ends with a /
+                                                                 //dont set a status yet, just change modded uri
+-                        strcat(web_root, "index.html");         //append index.html to end of file path
++                        strcat(web_root, "index.html");         //append index.html to end of file pat
++                        printf("%s\n\n", web_root);
+                 }
+         }
+     }
+@@ -278,14 +280,17 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+         strcat(web_root, "/index.html");
+     }
+ 
++
+     //check for correct HTTP protocol
+-    if((strcmp(httpVersion, "HTTP/1.0") != 0) && (strcmp(httpVersion, "HTTP/1.1") != 0)) {           
++    if(httpVersion == NULL || ((strcmp(httpVersion, "HTTP/1.0") != 0) && (strcmp(httpVersion, "HTTP/1.1") != 0))) {           
+         status = "501 Not Implemented";
+         logRequest(clnt_IP, method, requestURI, httpVersion, status);
+         errResponse(clntSocket, status);
++        fclose(input);
+         return;
+     }
+ 
++
+     /* build response */
+     //printf("%s\n", web_root);        
+     FILE *outFile = fopen(web_root, "r+");      //open file
+@@ -293,10 +298,11 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+         status = "404 Not Found";               //then we havent found it :( 
+         logRequest(clnt_IP, method, requestURI, httpVersion, status);
+         errResponse(clntSocket, status);
+-        fclose(input);                
++        fclose(input); 
+         return;
+     }
+ 
++
+     //if weve made it this far, we can set status to 200 OK
+     //and log the 200 OK request to stdout
+     status = "200 OK";          //finally!
+-- 
+1.7.9.5
+
+
+From 675c4d4554e46321b1b1ac5dca6d992493867392 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 21 Apr 2015 22:38:25 -0400
+Subject: [PATCH 11/16] more debugging progress
+
+---
+ Makefile      |    2 +-
+ http-server.c |   18 +++++-------------
+ 2 files changed, 6 insertions(+), 14 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 9634129..82146e2 100644
+--- a/Makefile
++++ b/Makefile
+@@ -26,7 +26,7 @@ clean:
+ 	ls -alF
+ .PHONY: valgrind
+ valgrind: 
+-	valgrind --leak-check=full --track-origins=yes --show-reachable=yes ./http-server 8887 /home/jpf2141/html localhost 9998
++	valgrind --leak-check=full --track-origins=yes --show-reachable=yes ./http-server 1111 /home/jpf2141/html localhost 9999
+ 
+ .PHONY: all
+ all: clean default
+diff --git a/http-server.c b/http-server.c
+index 97b075d..dfd022b 100644
+--- a/http-server.c
++++ b/http-server.c
+@@ -175,16 +175,9 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+     char requestLine[IOBUFSIZE];
+     char outBuf[IOBUFSIZE];
+     int outLen;
+-    fgets(requestLine, IOBUFSIZE, input);
+-    //printf("%s\n", requestLine);      //print entire request line 
++    fgets(requestLine, IOBUFSIZE, input); 
+     
+     /* parse request */
+-    int requestLen;                                             //length of http request
+-    if((requestLen = strlen(requestLine)) < 4) {                //check for weird request,
+-        fclose(input);                                          //the phantom GET request from Chrome
+-        return;
+-    }
+-    requestLine[requestLen] = '\0';                             //null terminate request line
+     char web_root[500];
+     strcpy(web_root, web_root_init);                            
+     char *clnt_IP = inet_ntoa(clntAddr->sin_addr);              //ip addrress of the client
+@@ -197,7 +190,6 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+     int rqType = 1;                                             //type of request 
+                                                                 //1 for static, 2 for mdb-lookup w/ table, 0 for mdb-lookup w/ form only
+ 
+-
+     /* check request for errors*/
+     if(strcmp(method, "GET") != 0) {    //checks for GET method
+         status = "501 Not Implemented";
+@@ -260,7 +252,6 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+ 
+                 }
+                 end = &requestURI[strlen(requestURI) - 3]; 
+-                printf("end: %s\n\n", end);
+                 if(strcmp(end, "/..") == 0) { 
+                         status = "400 Bad Request";
+                         logRequest(clnt_IP, method, requestURI, httpVersion, status); 
+@@ -341,7 +332,8 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                         fclose(input);
+                         return;
+                 }
+-        }    
++        }
++        fclose(outFile);    
+     }
+ 
+     //mdb lookup table
+@@ -407,8 +399,8 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                 fclose(input);
+                 die("send() to clntSocket failed at fread");
+         }
++//        fclose(mdbSocketFile);
+     }
+-    //free resources
+-    fclose(input);                
++    fclose(input);
+ }
+ 
+-- 
+1.7.9.5
+
+
+From d40dd400270661d43a2b50f3709fad2362ffb0ff Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 21 Apr 2015 23:04:21 -0400
+Subject: [PATCH 12/16] No bugs, minor memory leaks maybe?
+
+---
+ http-server.c |    9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/http-server.c b/http-server.c
+index dfd022b..953eead 100644
+--- a/http-server.c
++++ b/http-server.c
+@@ -175,9 +175,12 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+     char requestLine[IOBUFSIZE];
+     char outBuf[IOBUFSIZE];
+     int outLen;
+-    fgets(requestLine, IOBUFSIZE, input); 
++    fgets(requestLine, IOBUFSIZE, input);
+     
+-    /* parse request */
++
++        
++        
++        
+     char web_root[500];
+     strcpy(web_root, web_root_init);                            
+     char *clnt_IP = inet_ntoa(clntAddr->sin_addr);              //ip addrress of the client
+@@ -191,7 +194,7 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                                                                 //1 for static, 2 for mdb-lookup w/ table, 0 for mdb-lookup w/ form only
+ 
+     /* check request for errors*/
+-    if(strcmp(method, "GET") != 0) {    //checks for GET method
++    if(method == NULL || strcmp(method, "GET") != 0) {    //checks for NULL string or  GET method
+         status = "501 Not Implemented";
+         logRequest(clnt_IP, method, requestURI, httpVersion, status); 
+         errResponse(clntSocket, status);
+-- 
+1.7.9.5
+
+
+From 06de9ed60b44622dc02b627c8b85bbcaa03ca344 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 21 Apr 2015 23:07:09 -0400
+Subject: [PATCH 13/16] added readme
+
+---
+ README.txt |   18 +++++++++---------
+ 1 file changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/README.txt b/README.txt
+index 66dfd3e..e67dbc5 100644
+--- a/README.txt
++++ b/README.txt
+@@ -1,11 +1,11 @@
+-This file should contain:
++  - Josh Fram
++  - jpf2141
++  - lab7
+ 
+-  - your name
+-  - your UNI
+-  - lab assignment number
+-  - description for each part
++
++
++  Everything works as outlined in the lab instructions. 
++  
+   
+-The description should indicate whether your solution for the part is
+-working or not.  You may also want to include anything else you would
+-like to communicate to the grader such as extra functionalities you
+-implemented or how you tried to fix your non-working code.
++  Error messaging prioritizes sending 501 not implemented if both HTTP is
++  not 1.1 or 1.0 AND the file is not found.
+-- 
+1.7.9.5
+
+
+From f942ee160c4832bf3734f078e60dde78bbd7eee1 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 21 Apr 2015 23:38:34 -0400
+Subject: [PATCH 14/16] Final changes made
+
+---
+ Makefile      |    2 +-
+ http-server.c |   11 +++--------
+ 2 files changed, 4 insertions(+), 9 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 82146e2..39a1b10 100644
+--- a/Makefile
++++ b/Makefile
+@@ -26,7 +26,7 @@ clean:
+ 	ls -alF
+ .PHONY: valgrind
+ valgrind: 
+-	valgrind --leak-check=full --track-origins=yes --show-reachable=yes ./http-server 1111 /home/jpf2141/html localhost 9999
++	valgrind --leak-check=full --track-origins=yes --show-reachable=yes ./http-server 1112 /home/jpf2141/html localhost 9999
+ 
+ .PHONY: all
+ all: clean default
+diff --git a/http-server.c b/http-server.c
+index 953eead..aac885a 100644
+--- a/http-server.c
++++ b/http-server.c
+@@ -177,10 +177,6 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+     int outLen;
+     fgets(requestLine, IOBUFSIZE, input);
+     
+-
+-        
+-        
+-        
+     char web_root[500];
+     strcpy(web_root, web_root_init);                            
+     char *clnt_IP = inet_ntoa(clntAddr->sin_addr);              //ip addrress of the client
+@@ -266,7 +262,6 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                 else if(requestURI[strlen(requestURI)-1] == '/') {      //if the request ends with a /
+                                                                 //dont set a status yet, just change modded uri
+                         strcat(web_root, "index.html");         //append index.html to end of file pat
+-                        printf("%s\n\n", web_root);
+                 }
+         }
+     }
+@@ -286,7 +281,6 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+ 
+ 
+     /* build response */
+-    //printf("%s\n", web_root);        
+     FILE *outFile = fopen(web_root, "r+");      //open file
+     if(rqType == 1 && outFile == NULL) {        //if we are looking for a static file and it is NULL, 
+         status = "404 Not Found";               //then we havent found it :( 
+@@ -362,7 +356,7 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+         }
+         memset(mdbBuf, '\0', sizeof(mdbBuf));   //reset mdbBuf so we can read results in
+         char *getRes;
+-
++        
+         FILE *mdbSocketFile;
+         if((mdbSocketFile = fdopen(mdbSocket, "r")) == NULL) {
+                 fclose(input);
+@@ -402,8 +396,9 @@ void HandleTCPClient(int clntSocket, int mdbSocket, struct sockaddr_in *clntAddr
+                 fclose(input);
+                 die("send() to clntSocket failed at fread");
+         }
+-//        fclose(mdbSocketFile);
++       // fclose(mdbSocketFile);
+     }
++    //fclose(mdbSocketFile);
+     fclose(input);
+ }
+ 
+-- 
+1.7.9.5
+
+
+From 9ba1dbf9bb05b0043a9e0c3d1288f5245d751a92 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 21 Apr 2015 23:44:01 -0400
+Subject: [PATCH 15/16] changed makefile slightly
+
+---
+ Makefile |    7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 39a1b10..bc4993f 100644
+--- a/Makefile
++++ b/Makefile
+@@ -6,12 +6,12 @@
+ CC  = gcc
+ CXX = g++
+ 
+-INCLUDES = -I ../lab3/part1
++INCLUDES = 
+ CFLAGS   = -g -Wall $(INCLUDES)
+ CXXFLAGS = -g -Wall $(INCLUDES)
+ 
+-LDFLAGS = -g -L ../lab3/part1
+-LDLIBS = -lmylist
++LDFLAGS = 
++LDLIBS = 
+ 
+ 
+ http-server: http-server.o 
+@@ -23,7 +23,6 @@ http-server.o: http-server.c
+ .PHONY: clean
+ clean:
+ 	rm -f *.o *~ a.out core http-server
+-	ls -alF
+ .PHONY: valgrind
+ valgrind: 
+ 	valgrind --leak-check=full --track-origins=yes --show-reachable=yes ./http-server 1112 /home/jpf2141/html localhost 9999
+-- 
+1.7.9.5
+
+
+From d23621534df7b8bc9bb25538007ba92859325d5d Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 21 Apr 2015 23:46:46 -0400
+Subject: [PATCH 16/16] removed unneeded headers
+
+---
+ http-server.c |    2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/http-server.c b/http-server.c
+index aac885a..901d323 100644
+--- a/http-server.c
++++ b/http-server.c
+@@ -9,8 +9,6 @@
+  * modified from TCPEchoServer.c and mdb-lookup.c.
+  */
+ 
+-#include "mdb.h"
+-#include "mylist.h"
+ 
+ #include <stdio.h>      /* for printf() and fprintf() */
+ #include <sys/socket.h> /* for socket(), bind(), and connect() */
+-- 
+1.7.9.5
+

@@ -1,0 +1,1037 @@
+From f32931f880b1e94c56142268ee0d53c0d6b1dea3 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Fri, 20 Feb 2015 21:13:21 -0500
+Subject: [PATCH 01/10] Started Lab, added printf experiments
+
+---
+ part1/Makefile      |   68 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ part1/mylist-test.c |    4 +--
+ part1/mylist.c      |    9 +++++++
+ 3 files changed, 79 insertions(+), 2 deletions(-)
+ create mode 100644 part1/Makefile
+ create mode 100644 part1/mylist.c
+
+diff --git a/part1/Makefile b/part1/Makefile
+new file mode 100644
+index 0000000..ea9d819
+--- /dev/null
++++ b/part1/Makefile
+@@ -0,0 +1,68 @@
++# This Makefile should be used as a template for future Makefiles.
++# It’s heavily commented, so hopefully you can understand what each
++# line does.
++# We’ll use gcc for C compilation and g++ for C++ compilation
++CC = gcc
++CXX = g++
++# Let’s leave a place holder for additional include directories
++INCLUDES =
++# Compilation options:
++# -g for debugging info and -Wall enables all warnings
++CFLAGS = -g -Wall $(INCLUDES)
++# CXXFLAGS = -g -Wall $(INCLUDES)
++# Linking options:
++# -g for debugging info
++LDFLAGS = -g
++# List the libraries you need to link with in LDLIBS
++# For example, use "-lm" for the math library
++LDLIBS = 
++# The 1st target gets built when you type "make".
++# It’s usually your executable. ("main" in this case.)
++#
++# Note that we did not specify the linking rule.
++# Instead, we rely on one of make’s implicit rules:
++#
++# $(CC) $(LDFLAGS) <all-dependent-.o-files> $(LDLIBS)
++#
++# Also note that make assumes that main depends on main.o,
++# so we can omit it if we want to.
++mylist: mylist.o mylist-test.o
++# main.o depends not only on main.c, but also on myadd.h because
++# main.c includes myadd.h. main.o will get recompiled if either
++# main.c or myadd.h get modified.
++#
++# make already knows main.o depends on main.c, so we can omit main.c
++# in the dependency list if we want to.#
++# make uses the following implicit rule to compile a .c file into a .o
++# file:
++#
++# $(CC) -c $(CFLAGS) <the-.c-file>
++#
++mylist.o: mylist.c mylist.h
++
++mylist-test.o: mylist-test.c mylist.h
++# And myadd.o depends on myadd.c and myadd.h.
++
++
++
++
++# Always provide the "clean" target that removes intermediate files.
++# What you remove depend on your choice of coding tools
++# (different editors generate different backup files for example).
++
++#
++## And the "clean" target is not a file name, so we tell make that
++# it’s a "phony" target.
++.PHONY: clean
++clean:
++	rm -f *.o a.out core main
++#  # "all" target is useful if your Makefile builds multiple programs.
++# Here we’ll have it first do "clean", and rebuild the main target.
++.PHONY: all
++all: clean main
++
++
++
++.PHONY: valgrind
++valgrind: mylist
++	valgrind --leak-check=yes ./mylist
+diff --git a/part1/mylist-test.c b/part1/mylist-test.c
+index 817f2a6..cb41af1 100644
+--- a/part1/mylist-test.c
++++ b/part1/mylist-test.c
+@@ -36,7 +36,7 @@ int main()
+     }
+     traverseList(&list, &printDouble);
+     printf("\n");
+-
++/*
+     // test flipSignDouble()
+     printf("testing flipSignDouble(): ");
+     traverseList(&list, &flipSignDouble);
+@@ -84,6 +84,6 @@ int main()
+ 	traverseList(&list, &printDouble);
+ 	printf("]\n");
+     }
+-
++*/
+     return 0;
+ }
+diff --git a/part1/mylist.c b/part1/mylist.c
+new file mode 100644
+index 0000000..5b2038f
+--- /dev/null
++++ b/part1/mylist.c
+@@ -0,0 +1,9 @@
++#include "mylist.h"
++
++
++
++
++
++struct Node *addFront(struct List *list, void *data) {
++
++}
+-- 
+1.7.9.5
+
+
+From 6cc3b8b819d34ee36e65a6dd7d1edd05f0bbab13 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 21 Feb 2015 14:47:30 -0500
+Subject: [PATCH 02/10] Added flipSignDouble, removed mylist-test.c
+
+---
+ part1/mylist-test.c |   89 ---------------------------------------------------
+ part1/mylist.c      |   35 ++++++++++++++++++++
+ 2 files changed, 35 insertions(+), 89 deletions(-)
+ delete mode 100644 part1/mylist-test.c
+
+diff --git a/part1/mylist-test.c b/part1/mylist-test.c
+deleted file mode 100644
+index cb41af1..0000000
+--- a/part1/mylist-test.c
++++ /dev/null
+@@ -1,89 +0,0 @@
+-#include <stdio.h>
+-#include <stdlib.h>
+-#include <assert.h>
+-#include "mylist.h"
+-
+-static void printDouble(void *p)
+-{
+-    printf("%.1f ", *(double *)p);
+-}
+-
+-static void die(const char *message)
+-{
+-    perror(message);
+-    exit(1); 
+-}
+-
+-int main() 
+-{
+-    double a[] = { 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0 };
+-    int n = sizeof(a) / sizeof(a[0]);
+-
+-    int i;
+-    double x;
+-    void *data;
+-    struct Node *node;
+-
+-    // initialize list
+-    struct List list;
+-    initList(&list);
+-
+-    // test addFront()
+-    printf("testing addFront(): ");
+-    for (i = 0; i < n; i++) {
+-	if (addFront(&list, a+i) == NULL) 
+-	    die("addFront() failed");
+-    }
+-    traverseList(&list, &printDouble);
+-    printf("\n");
+-/*
+-    // test flipSignDouble()
+-    printf("testing flipSignDouble(): ");
+-    traverseList(&list, &flipSignDouble);
+-    traverseList(&list, &printDouble);
+-    printf("\n");
+-    printf("testing flipSignDouble() again: ");
+-    traverseList(&list, &flipSignDouble);
+-    traverseList(&list, &printDouble);
+-    printf("\n");
+-    
+-    // test findNode()
+-    printf("testing findNode(): ");
+-    x = 3.5;
+-    node = findNode(&list, &x, &compareDouble);
+-    assert(node == NULL);
+-    x = 1.0;
+-    node = findNode(&list, &x, &compareDouble);
+-    assert(node != NULL && *(double *)node->data == x);
+-    printf("OK\n");
+-
+-    // test popFront()
+-    while ((data = popFront(&list)) != NULL) {
+-	printf("popped %.1f, the rest is: [ ", *(double *)data);
+-	traverseList(&list, &printDouble);
+-	printf("]\n");
+-    }
+-
+-    // test addAfter()
+-    printf("testing addAfter(): ");
+-    node = NULL;
+-    for (i = 0; i < n; i++) {
+-	// We keep adding after the previously added node,
+-	// so we are in effect 'appending' to the list.
+-	node = addAfter(&list, node, a+i);
+-	if (node == NULL) 
+-	    die("addAfter() failed");
+-    }
+-    traverseList(&list, &printDouble);
+-    printf("\n");
+-
+-    // test reverseList()
+-    while ((data = popFront(&list)) != NULL) {
+-	printf("popped %.1f, and reversed the rest: [ ", *(double *)data);
+-	reverseList(&list);
+-	traverseList(&list, &printDouble);
+-	printf("]\n");
+-    }
+-*/
+-    return 0;
+-}
+diff --git a/part1/mylist.c b/part1/mylist.c
+index 5b2038f..3f19493 100644
+--- a/part1/mylist.c
++++ b/part1/mylist.c
+@@ -1,9 +1,44 @@
+ #include "mylist.h"
++#include <stdio.h>
++#include <stdlib.h>
++#include <assert.h>
+ 
+ 
+ 
+ 
++void flipSignDouble(void *data) {
++    double nodeData = *(double *)data;  //cast data to type double, then dereference it
++    double flippedData = nodeData*-1;   //flip data
++    
++    *(double *)data = flippedData;      //assign flipped data to be pointed at by *data
++                                        //data must be cast as a pointer to a double for
++                                        //this operation
++}
++
+ 
+ struct Node *addFront(struct List *list, void *data) {
++        
++        struct Node *node = malloc(sizeof(struct Node));   //declare new node
++                if (node == NULL) {
++                        perror("malloc returned NULL");
++                        exit(1);
++                }
++        //before we do anything else, we declare the current node's
++        //next pointer to be the current head's address:
++        node->next = list->head;
++        // then we allocate space for the new node to be plopped
++        list->head = node;      //point the list's head to this new node's address
++                                //because we are adding at the front
++        node->data = data;      //point the node's data        
++        return list->head;      //returns the pointer to the head of the list (first node)
++}
+ 
++void traverseList(struct List *list, void (*f)(void *)) {
++        
++        struct Node *node = list->head;
++        while (node != NULL) {
++                void *num = node->data;
++                f(num);
++                node = node->next;
++        }
+ }
+-- 
+1.7.9.5
+
+
+From 4d0c608f423f5daddd8ce9dcd5f47c322b9209a8 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 21 Feb 2015 15:46:34 -0500
+Subject: [PATCH 03/10] Finished find node
+
+---
+ part1/mylist-test.c |   89 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ part1/mylist.c      |   37 +++++++++++++++++++--
+ 2 files changed, 123 insertions(+), 3 deletions(-)
+ create mode 100644 part1/mylist-test.c
+
+diff --git a/part1/mylist-test.c b/part1/mylist-test.c
+new file mode 100644
+index 0000000..817f2a6
+--- /dev/null
++++ b/part1/mylist-test.c
+@@ -0,0 +1,89 @@
++#include <stdio.h>
++#include <stdlib.h>
++#include <assert.h>
++#include "mylist.h"
++
++static void printDouble(void *p)
++{
++    printf("%.1f ", *(double *)p);
++}
++
++static void die(const char *message)
++{
++    perror(message);
++    exit(1); 
++}
++
++int main() 
++{
++    double a[] = { 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0 };
++    int n = sizeof(a) / sizeof(a[0]);
++
++    int i;
++    double x;
++    void *data;
++    struct Node *node;
++
++    // initialize list
++    struct List list;
++    initList(&list);
++
++    // test addFront()
++    printf("testing addFront(): ");
++    for (i = 0; i < n; i++) {
++	if (addFront(&list, a+i) == NULL) 
++	    die("addFront() failed");
++    }
++    traverseList(&list, &printDouble);
++    printf("\n");
++
++    // test flipSignDouble()
++    printf("testing flipSignDouble(): ");
++    traverseList(&list, &flipSignDouble);
++    traverseList(&list, &printDouble);
++    printf("\n");
++    printf("testing flipSignDouble() again: ");
++    traverseList(&list, &flipSignDouble);
++    traverseList(&list, &printDouble);
++    printf("\n");
++    
++    // test findNode()
++    printf("testing findNode(): ");
++    x = 3.5;
++    node = findNode(&list, &x, &compareDouble);
++    assert(node == NULL);
++    x = 1.0;
++    node = findNode(&list, &x, &compareDouble);
++    assert(node != NULL && *(double *)node->data == x);
++    printf("OK\n");
++
++    // test popFront()
++    while ((data = popFront(&list)) != NULL) {
++	printf("popped %.1f, the rest is: [ ", *(double *)data);
++	traverseList(&list, &printDouble);
++	printf("]\n");
++    }
++
++    // test addAfter()
++    printf("testing addAfter(): ");
++    node = NULL;
++    for (i = 0; i < n; i++) {
++	// We keep adding after the previously added node,
++	// so we are in effect 'appending' to the list.
++	node = addAfter(&list, node, a+i);
++	if (node == NULL) 
++	    die("addAfter() failed");
++    }
++    traverseList(&list, &printDouble);
++    printf("\n");
++
++    // test reverseList()
++    while ((data = popFront(&list)) != NULL) {
++	printf("popped %.1f, and reversed the rest: [ ", *(double *)data);
++	reverseList(&list);
++	traverseList(&list, &printDouble);
++	printf("]\n");
++    }
++
++    return 0;
++}
+diff --git a/part1/mylist.c b/part1/mylist.c
+index 3f19493..ac560d5 100644
+--- a/part1/mylist.c
++++ b/part1/mylist.c
+@@ -6,11 +6,42 @@
+ 
+ 
+ 
++
++struct Node *findNode(struct List *list, const void *dataSought,
++                int (*compar)(const void *, const void *)) {
++
++        struct Node *node = list->head;     //first, assign *node to point
++                                        //at the head of the list
++        while(node != NULL) {
++                void *dataFound = node->data;
++                int match = compar(dataSought, dataFound);
++                if(match == 0) {
++                        return node;
++                }
++                else {
++                        node = node->next;
++                } 
++        }
++        return NULL;
++}
++
++int compareDouble(const void *data1, const void *data2) {
++        double dataSought = *(double *)data1;   //cast data1 to pointer to a double, dereference
++        double dataFound = *(double *)data2;    //cast data2 to pointer to a double, dereference
++        if(dataSought == dataFound) {
++                return 0;
++        }
++        else {
++                return 1;
++        }
++}
++
++
+ void flipSignDouble(void *data) {
+-    double nodeData = *(double *)data;  //cast data to type double, then dereference it
+-    double flippedData = nodeData*-1;   //flip data
++        double nodeData = *(double *)data;  //cast data to type double, then dereference it
++        double flippedData = nodeData*-1;   //flip data
+     
+-    *(double *)data = flippedData;      //assign flipped data to be pointed at by *data
++        *(double *)data = flippedData;      //assign flipped data to be pointed at by *data
+                                         //data must be cast as a pointer to a double for
+                                         //this operation
+ }
+-- 
+1.7.9.5
+
+
+From 48f5841dfd265a05dab367ddf6a64938338f5d5b Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 21 Feb 2015 16:58:01 -0500
+Subject: [PATCH 04/10] Finished popFront()
+
+---
+ part1/mylist.c |   17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/part1/mylist.c b/part1/mylist.c
+index ac560d5..d5afe0b 100644
+--- a/part1/mylist.c
++++ b/part1/mylist.c
+@@ -7,6 +7,22 @@
+ 
+ 
+ 
++void *popFront(struct List *list) {
++        if(isEmptyList(list)) {
++                return NULL;
++        }
++
++        struct Node *node = list->head;     //node pointer to the current head of the list
++        void *headDP = node->data;  //save the address where the head's data is stored at
++
++        struct Node *node2 = node->next;    //2nd node pointer to the 2nd node in the list
++        list->head = node2;         //point the list head to the address of the 2nd node
++
++        free(node);         //free the memory allocated for the head node
++        return headDP;  //return the 'data' pointer that was stored in the node.
++}
++
++
+ struct Node *findNode(struct List *list, const void *dataSought,
+                 int (*compar)(const void *, const void *)) {
+ 
+@@ -25,6 +41,7 @@ struct Node *findNode(struct List *list, const void *dataSought,
+         return NULL;
+ }
+ 
++
+ int compareDouble(const void *data1, const void *data2) {
+         double dataSought = *(double *)data1;   //cast data1 to pointer to a double, dereference
+         double dataFound = *(double *)data2;    //cast data2 to pointer to a double, dereference
+-- 
+1.7.9.5
+
+
+From d20959c94558a708ac2cc94dc8696576284f7b25 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 21 Feb 2015 17:40:00 -0500
+Subject: [PATCH 05/10] Finished addAfter()
+
+---
+ part1/mylist.c |   27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/part1/mylist.c b/part1/mylist.c
+index d5afe0b..05a9c06 100644
+--- a/part1/mylist.c
++++ b/part1/mylist.c
+@@ -5,6 +5,33 @@
+ 
+ 
+ 
++struct Node *addAfter(struct List *list,
++        struct Node *prevNode, void *data) {
++        
++        struct Node *node=malloc(sizeof(struct Node));   //declare new node
++        if (node == NULL)
++        {
++                perror("malloc returned NULL");
++                exit(1);
++        }
++        if(prevNode == NULL) {  //if there is no previous node, point the
++                list->head = node;  //list head at the node we just created
++        }
++        else {
++                prevNode->next = node;  //otherwise, point the previous node's
++                                        //next pointer at the node we just made
++        }
++        node->data = data;     //point the new node's data pointer to the address
++                                //where the data we just passed in is
++        node->next = NULL;  //set current node's next pointer to null
++                                                                                                        
++        if(node->data != data) {
++                return NULL;
++        }
++        else {
++            return node;
++        }
++}
+ 
+ 
+ void *popFront(struct List *list) {
+-- 
+1.7.9.5
+
+
+From 8fc8859681be13633b3064a5b6bfd7095175819b Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 21 Feb 2015 21:17:21 -0500
+Subject: [PATCH 06/10] Finished Part1A
+
+---
+ part1/mylist.c |   22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
+
+diff --git a/part1/mylist.c b/part1/mylist.c
+index 05a9c06..d3588c9 100644
+--- a/part1/mylist.c
++++ b/part1/mylist.c
+@@ -5,6 +5,28 @@
+ 
+ 
+ 
++
++void removeAllNodes(struct List *list) {
++        while(popFront(list));
++}
++
++void reverseList(struct List *list) {
++        struct Node *prv = NULL;
++        struct Node *cur = list->head;
++        struct Node *nxt;
++                    
++        while (cur != NULL) {
++                nxt = cur->next;    //make the next pointer point to the next node
++                cur->next = prv;
++                prv = cur;
++                cur = nxt;
++        }
++        list->head = prv;
++}
++
++
++
++
+ struct Node *addAfter(struct List *list,
+         struct Node *prevNode, void *data) {
+         
+-- 
+1.7.9.5
+
+
+From f9dd07c193cc4ef81a39087d3e8cfbb0cdde30ce Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 22 Feb 2015 21:59:33 -0500
+Subject: [PATCH 07/10] Added library and Makefile w/ library capability
+
+---
+ part1/Makefile    |    4 ++--
+ part1/libmylist.a |  Bin 0 -> 13592 bytes
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+ create mode 100644 part1/libmylist.a
+
+diff --git a/part1/Makefile b/part1/Makefile
+index ea9d819..aa07ec7 100644
+--- a/part1/Makefile
++++ b/part1/Makefile
+@@ -26,7 +26,7 @@ LDLIBS =
+ #
+ # Also note that make assumes that main depends on main.o,
+ # so we can omit it if we want to.
+-mylist: mylist.o mylist-test.o
++mylist: libmylist.a mylist-test.o
+ # main.o depends not only on main.c, but also on myadd.h because
+ # main.c includes myadd.h. main.o will get recompiled if either
+ # main.c or myadd.h get modified.
+@@ -38,7 +38,7 @@ mylist: mylist.o mylist-test.o
+ #
+ # $(CC) -c $(CFLAGS) <the-.c-file>
+ #
+-mylist.o: mylist.c mylist.h
++libmylist.a: mylist.c mylist.h
+ 
+ mylist-test.o: mylist-test.c mylist.h
+ # And myadd.o depends on myadd.c and myadd.h.
+diff --git a/part1/libmylist.a b/part1/libmylist.a
+new file mode 100644
+index 0000000000000000000000000000000000000000..9e188392562f51bcfdd7a143fdc592bb519996a3
+GIT binary patch
+literal 13592
+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
+T-3%&0g6Z#-jYmFQwv+z@uLUSw
+
+literal 0
+HcmV?d00001
+
+-- 
+1.7.9.5
+
+
+From dff61f2843ce1165b8a76a82d6d4e48e9f7b1304 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 23 Feb 2015 01:50:54 -0500
+Subject: [PATCH 08/10] Finished Part2
+
+---
+ part2/Makefile  |   64 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ part2/revecho.c |   43 +++++++++++++++++++++++++++++++++++++
+ 2 files changed, 107 insertions(+)
+ create mode 100644 part2/Makefile
+ create mode 100644 part2/revecho.c
+
+diff --git a/part2/Makefile b/part2/Makefile
+new file mode 100644
+index 0000000..a504fc7
+--- /dev/null
++++ b/part2/Makefile
+@@ -0,0 +1,64 @@
++# This Makefile should be used as a template for future Makefiles.
++# It’s heavily commented, so hopefully you can understand what each
++# line does.
++# We’ll use gcc for C compilation and g++ for C++ compilation
++CC = gcc
++CXX = g++
++# Let’s leave a place holder for additional include directories
++INCLUDES = 
++# Compilation options:
++# -g for debugging info and -Wall enables all warnings
++CFLAGS = -g -Wall -I ../part1 $(INCLUDES)
++# CXXFLAGS = -g -Wall $(INCLUDES)
++# Linking options:
++# -g for debugging info
++LDFLAGS =  
++# List the libraries you need to link with in LDLIBS
++# For example, use "-lm" for the math library
++LDLIBS = -L ../part1 -lmylist
++# The 1st target gets built when you type "make".
++# It’s usually your executable. ("main" in this case.)
++#
++# Note that we did not specify the linking rule.
++# Instead, we rely on one of make’s implicit rules:
++#
++# $(CC) $(LDFLAGS) <all-dependent-.o-files> $(LDLIBS)
++#
++# Also note that make assumes that main depends on main.o,
++# so we can omit it if we want to.
++revecho: revecho.o
++# main.o depends not only on main.c, but also on myadd.h because
++# main.c includes myadd.h. main.o will get recompiled if either
++# main.c or myadd.h get modified.
++#
++# make already knows main.o depends on main.c, so we can omit main.c
++# in the dependency list if we want to.#
++# make uses the following implicit rule to compile a .c file into a .o
++# file:
++#
++# $(CC) -c $(CFLAGS) <the-.c-file>
++#
++revecho.o: revecho.c
++
++
++
++# Always provide the "clean" target that removes intermediate files.
++# What you remove depend on your choice of coding tools
++# (different editors generate different backup files for example).
++
++#
++## And the "clean" target is not a file name, so we tell make that
++# it’s a "phony" target.
++.PHONY: clean
++clean:
++	rm -f *.o a.out core main
++#  # "all" target is useful if your Makefile builds multiple programs.
++# Here we’ll have it first do "clean", and rebuild the main target.
++.PHONY: all
++all: clean main
++
++
++
++.PHONY: valgrind
++valgrind: mylist
++	valgrind --leak-check=yes ./mylist
+diff --git a/part2/revecho.c b/part2/revecho.c
+new file mode 100644
+index 0000000..8aa73b9
+--- /dev/null
++++ b/part2/revecho.c
+@@ -0,0 +1,43 @@
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <ctype.h>
++#include <mylist.h>
++
++
++static void printArg(void *p)
++{
++        printf("%s\n", (char *)p);
++}
++
++
++int main(int argc, char **argv) {
++
++        // initialize list
++        struct List list;
++        initList(&list);
++        
++        //populate linked list with the command line args
++        argv++;
++        while(*argv) {
++               addFront(&list, *argv++);
++        }
++
++        traverseList(&list, &printArg);
++        printf("\n");
++        void *dataSought = "dude";
++        if(findNode(&list, dataSought, (int (*)(const void *, const void *))(strcmp))) {
++                printf("dude found\n\n");
++        }
++        else {
++                printf("dude not found\n\n");
++        }
++        removeAllNodes(&list);
++        return 0;
++}
++
++
++
++
++
++
+-- 
+1.7.9.5
+
+
+From d84a2433ab8b399b049ade8b6b625a89ca96c8a0 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 24 Feb 2015 22:15:47 -0500
+Subject: [PATCH 09/10] Fixed Makefile
+
+---
+ part1/Makefile      |   11 +++++++----
+ part1/mylist-test.c |    2 +-
+ 2 files changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/part1/Makefile b/part1/Makefile
+index aa07ec7..4fcabac 100644
+--- a/part1/Makefile
++++ b/part1/Makefile
+@@ -26,7 +26,7 @@ LDLIBS =
+ #
+ # Also note that make assumes that main depends on main.o,
+ # so we can omit it if we want to.
+-mylist: libmylist.a mylist-test.o
++mylist-test: libmylist.a mylist-test.o
+ # main.o depends not only on main.c, but also on myadd.h because
+ # main.c includes myadd.h. main.o will get recompiled if either
+ # main.c or myadd.h get modified.
+@@ -38,9 +38,12 @@ mylist: libmylist.a mylist-test.o
+ #
+ # $(CC) -c $(CFLAGS) <the-.c-file>
+ #
+-libmylist.a: mylist.c mylist.h
++libmylist.a: mylist.o
++	ar rc libmylist.a mylist.o
++	ranlib libmylist.a
+ 
+ mylist-test.o: mylist-test.c mylist.h
++mylist.o: mylist.c mylist.h
+ # And myadd.o depends on myadd.c and myadd.h.
+ 
+ 
+@@ -55,11 +58,11 @@ mylist-test.o: mylist-test.c mylist.h
+ # it’s a "phony" target.
+ .PHONY: clean
+ clean:
+-	rm -f *.o a.out core main
++	rm -f *.o a.out core libmylist.a mylist-test
+ #  # "all" target is useful if your Makefile builds multiple programs.
+ # Here we’ll have it first do "clean", and rebuild the main target.
+ .PHONY: all
+-all: clean main
++all: clean libmylist.a mylist-test
+ 
+ 
+ 
+diff --git a/part1/mylist-test.c b/part1/mylist-test.c
+index 817f2a6..5e42501 100644
+--- a/part1/mylist-test.c
++++ b/part1/mylist-test.c
+@@ -46,7 +46,7 @@ int main()
+     traverseList(&list, &flipSignDouble);
+     traverseList(&list, &printDouble);
+     printf("\n");
+-    
++   
+     // test findNode()
+     printf("testing findNode(): ");
+     x = 3.5;
+-- 
+1.7.9.5
+
+
+From 5884dfc64fd0e7da0e8390a6a16c0b59ec86c740 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 24 Feb 2015 22:25:37 -0500
+Subject: [PATCH 10/10] added README.txt
+
+---
+ README.txt |   82 +++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 73 insertions(+), 9 deletions(-)
+
+diff --git a/README.txt b/README.txt
+index 66dfd3e..a7555e3 100644
+--- a/README.txt
++++ b/README.txt
+@@ -1,11 +1,75 @@
+-This file should contain:
+ 
+-  - your name
+-  - your UNI
+-  - lab assignment number
+-  - description for each part
++  - Josh Fram
++  - jpf2141
++  - Lab3
++
+   
+-The description should indicate whether your solution for the part is
+-working or not.  You may also want to include anything else you would
+-like to communicate to the grader such as extra functionalities you
+-implemented or how you tried to fix your non-working code.
++
++Part 1 and Part 2 work exactly as specified in the lab instructions
++
++
++Part 1 Valgrind Output:
++
++==14560== Memcheck, a memory error detector
++==14560== Copyright (C) 2002-2011, and GNU GPL'd, by Julian Seward et al.
++==14560== Using Valgrind-3.7.0 and LibVEX; rerun with -h for copyright info
++==14560== Command: ./mylist-test
++==14560== 
++testing addFront(): 9.0 8.0 7.0 6.0 5.0 4.0 3.0 2.0 1.0 
++testing flipSignDouble(): -9.0 -8.0 -7.0 -6.0 -5.0 -4.0 -3.0 -2.0 -1.0 
++testing flipSignDouble() again: 9.0 8.0 7.0 6.0 5.0 4.0 3.0 2.0 1.0 
++testing findNode(): OK
++popped 9.0, the rest is: [ 8.0 7.0 6.0 5.0 4.0 3.0 2.0 1.0 ]
++popped 8.0, the rest is: [ 7.0 6.0 5.0 4.0 3.0 2.0 1.0 ]
++popped 7.0, the rest is: [ 6.0 5.0 4.0 3.0 2.0 1.0 ]
++popped 6.0, the rest is: [ 5.0 4.0 3.0 2.0 1.0 ]
++popped 5.0, the rest is: [ 4.0 3.0 2.0 1.0 ]
++popped 4.0, the rest is: [ 3.0 2.0 1.0 ]
++popped 3.0, the rest is: [ 2.0 1.0 ]
++popped 2.0, the rest is: [ 1.0 ]
++popped 1.0, the rest is: [ ]
++testing addAfter(): 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 
++popped 1.0, and reversed the rest: [ 9.0 8.0 7.0 6.0 5.0 4.0 3.0 2.0 ]
++popped 9.0, and reversed the rest: [ 2.0 3.0 4.0 5.0 6.0 7.0 8.0 ]
++popped 2.0, and reversed the rest: [ 8.0 7.0 6.0 5.0 4.0 3.0 ]
++popped 8.0, and reversed the rest: [ 3.0 4.0 5.0 6.0 7.0 ]
++popped 3.0, and reversed the rest: [ 7.0 6.0 5.0 4.0 ]
++popped 7.0, and reversed the rest: [ 4.0 5.0 6.0 ]
++popped 4.0, and reversed the rest: [ 6.0 5.0 ]
++popped 6.0, and reversed the rest: [ 5.0 ]
++popped 5.0, and reversed the rest: [ ]
++==14560== 
++==14560== HEAP SUMMARY:
++==14560==     in use at exit: 0 bytes in 0 blocks
++==14560==   total heap usage: 18 allocs, 18 frees, 288 bytes allocated
++==14560== 
++==14560== All heap blocks were freed -- no leaks are possible
++==14560== 
++==14560== For counts of detected and suppressed errors, rerun with: -v
++==14560== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 2 from 2)
++
++
++
++Part2 Valgrind Output: 
++
++
++==14629== Memcheck, a memory error detector
++==14629== Copyright (C) 2002-2011, and GNU GPL'd, by Julian Seward et al.
++==14629== Using Valgrind-3.7.0 and LibVEX; rerun with -h for copyright info
++==14629== Command: ./revecho hello world dude
++==14629== 
++dude
++world
++hello
++
++dude found
++
++==14629== 
++==14629== HEAP SUMMARY:
++==14629==     in use at exit: 0 bytes in 0 blocks
++==14629==   total heap usage: 3 allocs, 3 frees, 48 bytes allocated
++==14629== 
++==14629== All heap blocks were freed -- no leaks are possible
++==14629== 
++==14629== For counts of detected and suppressed errors, rerun with: -v
++==14629== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 2 from 2)
+-- 
+1.7.9.5
+

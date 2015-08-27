@@ -1,0 +1,786 @@
+From 2bd73019086145948e89bc65fdbd619d7dfe8217 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Fri, 3 Apr 2015 12:31:17 -0400
+Subject: [PATCH 1/6] Finished Part 1
+
+---
+ part1/DieWithError.c      |    8 +++
+ part1/Makefile            |    9 ++-
+ part1/mdb-lookup-server.c |  166 +++++++++++++++++++++++++++++++++++++++++++++
+ part1/mdb.c               |   51 ++++++++++++++
+ part1/mdb.h               |    5 ++
+ 5 files changed, 236 insertions(+), 3 deletions(-)
+ create mode 100644 part1/DieWithError.c
+ create mode 100644 part1/mdb-lookup-server.c
+ create mode 100644 part1/mdb.c
+
+diff --git a/part1/DieWithError.c b/part1/DieWithError.c
+new file mode 100644
+index 0000000..a00f377
+--- /dev/null
++++ b/part1/DieWithError.c
+@@ -0,0 +1,8 @@
++#include <stdio.h>  /* for perror() */
++#include <stdlib.h> /* for exit() */
++
++void DieWithError(char *errorMessage)
++{
++    perror(errorMessage);
++    exit(1);
++}
+diff --git a/part1/Makefile b/part1/Makefile
+index 813b8ec..810d0aa 100644
+--- a/part1/Makefile
++++ b/part1/Makefile
+@@ -13,11 +13,14 @@ CXXFLAGS = -g -Wall $(INCLUDES)
+ LDFLAGS = -g -L../../lab3/part1
+ LDLIBS = -lmylist
+ 
+-.PHONY: default
+-default: mdb-lookup-server
++
++mdb-lookup-server: mdb-lookup-server.o mdb.o DieWithError.o
+ 
+ # header dependency
+-mdb-lookup-server.o: mdb.h
++mdb-lookup-server.o: mdb.h mdb-lookup-server.c
++mdb.o: mdb.h mdb.c
++DieWithError.o: DieWithError.c
++
+ 
+ .PHONY: clean
+ clean:
+diff --git a/part1/mdb-lookup-server.c b/part1/mdb-lookup-server.c
+new file mode 100644
+index 0000000..d918b0f
+--- /dev/null
++++ b/part1/mdb-lookup-server.c
+@@ -0,0 +1,166 @@
++
++
++/*mdb-lookup-server.c*/
++
++#include <stdio.h>      /* for printf() and fprintf() */
++#include <sys/socket.h> /* for socket(), bind(), and connect() */
++#include <arpa/inet.h>  /* for sockaddr_in and inet_ntoa() */
++#include <stdlib.h>     /* for atoi() and exit() */
++#include <string.h>     /* for memset() */
++#include <unistd.h>     /* for close() */
++#include "mdb.h"
++#include "mylist.h"
++
++#define MAXPENDING 5    /* Maximum outstanding connection requests */
++#define KeyMax 5
++
++void DieWithError(char *errorMessage);  /* Error handling function */
++void HandleTCPClient(int clntSocket);   /* TCP client handling function */
++int loadmdb(FILE *fp, struct List *dest);
++void freemdb(struct List *list);
++
++
++int main(int argc, char *argv[])
++{
++    int servSock;                    /* Socket descriptor for server */
++    int clntSock;                    /* Socket descriptor for client */
++    struct sockaddr_in echoServAddr; /* Local address */
++    struct sockaddr_in echoClntAddr; /* Client address */
++    unsigned short echoServPort;     /* Server port */
++    unsigned int clntLen;            /* Length of client address data structure */
++
++    if (argc != 3)     /* Test for correct number of arguments */
++    {
++        fprintf(stderr, "Usage:  %s <Database Name> <Server Port>\n", argv[0]);
++        exit(1);
++    }
++
++    echoServPort = atoi(argv[2]);  /* Second arg:  local port */
++
++    /* Create socket for incoming connections */
++    if ((servSock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
++        DieWithError("socket() failed");
++      
++    /* Construct local address structure */
++    memset(&echoServAddr, 0, sizeof(echoServAddr));   /* Zero out structure */
++    echoServAddr.sin_family = AF_INET;                /* Internet address family */
++    echoServAddr.sin_addr.s_addr = htonl(INADDR_ANY); /* Any incoming interface */
++    echoServAddr.sin_port = htons(echoServPort);      /* Local port */
++
++    /* Bind to the local address */
++    if (bind(servSock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0)
++        DieWithError("bind() failed");
++
++    /* Mark the socket so it will listen for incoming connections */
++    if (listen(servSock, MAXPENDING) < 0)
++        DieWithError("listen() failed");
++
++    for (;;) /* Run forever */
++    {
++        /* Set the size of the in-out parameter */
++        clntLen = sizeof(echoClntAddr);
++
++        /* Wait for a client to connect */
++        if ((clntSock = accept(servSock, (struct sockaddr *) &echoClntAddr, 
++                               &clntLen)) < 0)
++            DieWithError("accept() failed");
++
++        /* clntSock is connected to a client! */
++
++        printf("Handling client %s\n", inet_ntoa(echoClntAddr.sin_addr));
++        mdbLookup(clntSock, argv[1]);
++        //HandleTCPClient(clntSock);
++        
++        printf("Terminated Connection with client %s\n", inet_ntoa(echoClntAddr.sin_addr));
++    }
++    /* NOT REACHED */
++}
++
++
++
++
++int mdbLookup(int clntSock, char *dbName)
++{
++    /*
++     * open the database file specified in the command line
++     */
++
++
++    char *filename = dbName;
++    FILE *fp = fopen(filename, "rb");
++    if (fp == NULL) 
++        DieWithError(filename);
++
++    /*
++     * read all records into memory
++     */
++
++    struct List list;
++    initList(&list);
++
++    int loaded = loadmdb(fp, &list);
++    if (loaded < 0)
++        DieWithError("loadmdb");
++    
++    fclose(fp);
++
++    /*
++     * lookup loop
++     */
++
++    char line[1000];
++    char outArr[60];
++    char key[KeyMax + 1];
++    int charCount = 0;
++
++    //printf("lookup: ");
++    //fflush(stdout);
++    
++    FILE *input = fdopen(clntSock, "r"); 
++    while (fgets(line, sizeof(line), input) != NULL) {
++
++        // must null-terminate the string manually after strncpy().
++        strncpy(key, line, sizeof(key) - 1);
++        key[sizeof(key) - 1] = '\0';
++
++        // if newline is there, remove it.
++        size_t last = strlen(key) - 1;
++        if (key[last] == '\n')
++            key[last] = '\0';
++
++        // traverse the list, printing out the matching records
++        struct Node *node = list.head;
++        int recNo = 1;
++        while (node) {
++            struct MdbRec *rec = (struct MdbRec *)node->data;
++            if (strstr(rec->name, key) || strstr(rec->msg, key)) {
++                //printf("%4d: {%s} said {%s}\n", recNo, rec->name, rec->msg);
++                if((charCount = sprintf(outArr, "%4d: {%s} said {%s}\n", recNo, rec->name, rec->msg)) < 0) {
++                        DieWithError("sprintf() failed");
++                }
++                if (send(clntSock, outArr, charCount, 0) != charCount) {
++                        DieWithError("send() failed");
++                }
++                //memset(&outArr, '\0', sizeof(outArr));   /* Zero out structure */
++                //charCount = 0;  //reset charCount to 0
++            }
++
++            node = node->next;
++            recNo++;
++        }
++
++        //printf("\nlookup: ");
++        //fflush(stdout);
++    }
++
++    // see if fgets() produced error
++    if (ferror(stdin)) 
++        DieWithError("stdin");
++
++    /*
++     * clean up and quit
++     */
++    fclose(input);
++    freemdb(&list);
++    return 0;
++}
+diff --git a/part1/mdb.c b/part1/mdb.c
+new file mode 100644
+index 0000000..26a9548
+--- /dev/null
++++ b/part1/mdb.c
+@@ -0,0 +1,51 @@
++/*
++ * mdb.c
++ */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#include "mylist.h"
++#include "mdb.h"
++
++int loadmdb(FILE *fp, struct List *dest) 
++{
++    /*
++     * read all records into memory
++     */
++
++    struct MdbRec r;
++    struct Node *node = NULL;
++    int count = 0;
++
++    while (fread(&r, sizeof(r), 1, fp) == 1) {
++
++        // allocate memory for a new record and copy into it the one
++        // that was just read from the database.
++        struct MdbRec *rec = (struct MdbRec *)malloc(sizeof(r));
++        if (!rec)
++            return -1;
++        memcpy(rec, &r, sizeof(r));
++
++        // add the record to the linked list.
++        node = addAfter(dest, node, rec);
++        if (node == NULL) 
++            return -1;
++
++        count++;
++    }
++
++    // see if fread() produced error
++    if (ferror(fp)) 
++        return -1;
++
++    return count;
++}
++
++void freemdb(struct List *list) 
++{
++    // free all the records
++    traverseList(list, &free);
++    removeAllNodes(list);
++}
+diff --git a/part1/mdb.h b/part1/mdb.h
+index 5a30b8d..093f9d1 100644
+--- a/part1/mdb.h
++++ b/part1/mdb.h
+@@ -11,5 +11,10 @@ struct MdbRec {
+     char  msg[24];
+ };
+ 
++
++
++
++void DieWithError(char *errorMessage);
++int mdbLookup(int clntSock, char *dbName);
+ #endif /* _MDB_H_ */
+ 
+-- 
+1.7.9.5
+
+
+From 3281fcea0a70c26866bac18eaea51af5016f4a20 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 5 Apr 2015 12:33:58 -0400
+Subject: [PATCH 2/6] Fixed client and server side spacing
+
+---
+ part1/mdb-lookup-server.c |   18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/part1/mdb-lookup-server.c b/part1/mdb-lookup-server.c
+index d918b0f..ae72d5b 100644
+--- a/part1/mdb-lookup-server.c
++++ b/part1/mdb-lookup-server.c
+@@ -20,8 +20,14 @@ int loadmdb(FILE *fp, struct List *dest);
+ void freemdb(struct List *list);
+ 
+ 
+-int main(int argc, char *argv[])
++int main(int argc, char *argv[]) 
+ {
++     // ignore SIGPIPE so that we don’t terminate when we call
++     // send() on a disconnected socket.
++     //if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
++     //    die("signal() failed");
++
++
+     int servSock;                    /* Socket descriptor for server */
+     int clntSock;                    /* Socket descriptor for client */
+     struct sockaddr_in echoServAddr; /* Local address */
+@@ -71,7 +77,7 @@ int main(int argc, char *argv[])
+         mdbLookup(clntSock, argv[1]);
+         //HandleTCPClient(clntSock);
+         
+-        printf("Terminated Connection with client %s\n", inet_ntoa(echoClntAddr.sin_addr));
++        printf("Terminated Connection with client %s\n\n", inet_ntoa(echoClntAddr.sin_addr));
+     }
+     /* NOT REACHED */
+ }
+@@ -149,10 +155,12 @@ int mdbLookup(int clntSock, char *dbName)
+             recNo++;
+         }
+ 
+-        //printf("\nlookup: ");
+-        //fflush(stdout);
++        char newLine[1];
++        sprintf(newLine, "\n");
++        if (send(clntSock, newLine, 1, 0) != 1) {
++                DieWithError("newline send() failed");
++        }
+     }
+-
+     // see if fgets() produced error
+     if (ferror(stdin)) 
+         DieWithError("stdin");
+-- 
+1.7.9.5
+
+
+From d82cf7a5269d2cf6f761e5e6e169ab2898311f6f Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 6 Apr 2015 00:23:26 -0400
+Subject: [PATCH 3/6] Almost complete part 2
+
+---
+ part1/Makefile       |    4 ++
+ part2/DieWithError.c |    8 ++++
+ part2/Makefile       |   67 +++++++++++++++++++++++++++++++
+ part2/http-client.c  |  109 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 188 insertions(+)
+ create mode 100644 part2/DieWithError.c
+ create mode 100644 part2/Makefile
+ create mode 100644 part2/http-client.c
+
+diff --git a/part1/Makefile b/part1/Makefile
+index 810d0aa..ed02a9d 100644
+--- a/part1/Makefile
++++ b/part1/Makefile
+@@ -26,6 +26,10 @@ DieWithError.o: DieWithError.c
+ clean:
+ 	rm -f *.o *~ a.out core mdb-lookup-server
+ 
++.PHONY: valgrind
++valgrind: 
++	valgrind --leak-check=full --show-reachable=yes ./mdb-lookup-server my-mdb 1111
++
+ .PHONY: all
+ all: clean default
+ 
+diff --git a/part2/DieWithError.c b/part2/DieWithError.c
+new file mode 100644
+index 0000000..a00f377
+--- /dev/null
++++ b/part2/DieWithError.c
+@@ -0,0 +1,8 @@
++#include <stdio.h>  /* for perror() */
++#include <stdlib.h> /* for exit() */
++
++void DieWithError(char *errorMessage)
++{
++    perror(errorMessage);
++    exit(1);
++}
+diff --git a/part2/Makefile b/part2/Makefile
+new file mode 100644
+index 0000000..47cc04b
+--- /dev/null
++++ b/part2/Makefile
+@@ -0,0 +1,67 @@
++# This Makefile should be used as a template for future Makefiles.
++# It’s heavily commented, so hopefully you can understand what each
++# line does.
++# We’ll use gcc for C compilation and g++ for C++ compilation
++CC = gcc
++CXX = g++
++# Let’s leave a place holder for additional include directories
++INCLUDES =   
++# Compilation options:
++# -g for debugging info and -Wall enables all warnings
++CFLAGS = -g -Wall $(INCLUDES)
++# CXXFLAGS = -g -Wall $(INCLUDES)
++# Linking options:
++# -g for debugging info
++LDFLAGS =  
++# List the libraries you need to link with in LDLIBS
++# For example, use "-lm" for the math library
++LDLIBS = 
++# The 1st target gets built when you type "make".
++# It’s usually your executable. ("main" in this case.)
++#
++# Note that we did not specify the linking rule.
++# Instead, we rely on one of make’s implicit rules:
++#
++# $(CC) $(LDFLAGS) <all-dependent-.o-files> $(LDLIBS)
++#
++# Also note that make assumes that main depends on main.o,
++# # so we can omit it if we want to.
++http-client: http-client.o DieWithError.o
++#TCPEchoClient: TCPEchoClient.o DieWithError.o
++# main.o depends not only on main.c, but also on myadd.h because
++# main.c includes myadd.h. main.o will get recompiled if either
++# main.c or myadd.h get modified.
++#
++# make already knows main.o depends on main.c, so we can omit main.c
++# in the dependency list if we want to.#
++# make uses the following implicit rule to compile a .c file into a .o
++# file:
++#
++# $(CC) -c $(CFLAGS) <the-.c-file>
++#
++
++
++http-client.o: http-client.c 
++DieWithError.o: DieWithError.c
++TCPEchoClient.o: TCPEchoClient.c
++
++# Always provide the "clean" target that removes intermediate files.
++# What you remove depend on your choice of coding tools
++# (different editors generate different backup files for example).
++
++#
++## And the "clean" target is not a file name, so we tell make that
++# it’s a "phony" target.
++.PHONY: clean
++clean:
++	rm -f *.o a.out core http-client TCPEchoClient
++#  # "all" target is useful if your Makefile builds multiple programs.
++# Here we’ll have it first do "clean", and rebuild the main target.
++.PHONY: all
++all: clean main
++
++
++
++.PHONY: valgrind
++valgrind: mdb
++	valgrind --leak-check=full --show-reachable=yes ./mdb-lookup my-mdb
+diff --git a/part2/http-client.c b/part2/http-client.c
+new file mode 100644
+index 0000000..41f617b
+--- /dev/null
++++ b/part2/http-client.c
+@@ -0,0 +1,109 @@
++
++#include <stdio.h>      /* for printf() and fprintf() */
++#include <sys/socket.h> /* for socket(), connect(), send(), and recv() */
++#include <arpa/inet.h>  /* for sockaddr_in and inet_addr() */
++#include <stdlib.h>     /* for atoi() and exit() */
++#include <string.h>     /* for memset() */
++#include <unistd.h>     /* for close() */
++#include <netdb.h>      
++#include <sys/types.h> 
++
++
++
++
++void DieWithError(char *errorMessage);  /* Error handling function */
++
++int main(int argc, char *argv[])
++{
++    char *filePath;                  /* File Path */
++    int header = 0;                  /* Boolean to check if current texter is header or body */
++    int lineNo = 0;
++    char text[1000];
++    char headerMSG[200];
++
++    int sock;                        /* Socket descriptor */
++    struct sockaddr_in echoServAddr; /* Echo server address */
++    unsigned short echoServPort;     /* Echo server port */
++    char *serv;                       /* server name */
++    char *servIP;                    /* Server IP address (dotted quad) */
++    unsigned int headerLen;          /* Length of string to echo */
++
++    if (argc != 4)    /* Test for correct number of arguments */
++    {
++       fprintf(stderr, "Usage: %s <www.example.com> 80 </path/to/file.html>\n",
++               argv[0]);
++       exit(1);
++    }
++
++    serv = argv[1];             /* First arg: server name */
++    //get server ip from server name
++    struct hostent *he;
++    if ((he = gethostbyname(serv)) == NULL) {
++         DieWithError("gethoatbyname failed");
++    }
++    servIP = inet_ntoa(*(struct in_addr *)he->h_addr);
++    
++    echoServPort = atoi(argv[2]); /* Use given port, if any */
++    filePath = argv[3];
++    //printf("%s", filePath);
++    //char *title = strrchr(filePath, '/') + 1;
++    char *title = "josh.txt";
++    printf("%s", title);
++    FILE *fileName = fopen(title, "w");
++
++
++    /* Create a reliable, stream socket using TCP */
++    if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
++        DieWithError("socket() failed");
++
++
++    /* Construct the server address structure */
++    memset(&echoServAddr, 0, sizeof(echoServAddr));     /* Zero out structure */
++    echoServAddr.sin_family      = AF_INET;             /* Internet address family */
++    echoServAddr.sin_addr.s_addr = inet_addr(servIP);   /* Server IP address */
++    echoServAddr.sin_port        = htons(echoServPort); /* Server port */
++
++    /* Establish the connection to the echo server */
++    if (connect(sock, (struct sockaddr *) &echoServAddr, sizeof(echoServAddr)) < 0)
++        DieWithError("connect() failed");
++   
++    /*Create header text */ 
++    sprintf(headerMSG, "GET %s HTTP/1.0\nHost: %s:%d\n\r\n",       //line 1 and 2, ended by \n and \n\r\n   
++            filePath, serv, echoServPort);    
++    headerLen = strlen(headerMSG);          /* Determine input length */
++
++    //printf("%d", headerLen); 
++    /* Send the string to the server */
++    if (send(sock, headerMSG, headerLen, 0) != headerLen)
++        DieWithError("send() sent a different number of bytes than expected");
++
++    /* Wrap the socket in a FILE descriptor */ 
++    FILE *response = fdopen(sock, "r");
++    /* Read until the end of the Header section of the transmission */ 
++    while(fgets(text, sizeof(text), response) != NULL) {
++        if(lineNo == 0) {
++                if(strstr(text, "200") == NULL) {
++                    printf("%s", text);
++
++                    close(sock);
++                    fclose(response);
++                    exit(1);
++                }
++                lineNo++;
++        }
++        else {
++            if(header) {
++                fprintf(fileName, "%s", text);
++            }
++            if((strcmp(text, "\r\n") == 0) && !header) { 
++                header = 1;
++            }
++        }
++    }
++
++    //cleanup
++    fclose(fileName);
++    fclose(response);
++    close(sock);
++    exit(0);
++}
+-- 
+1.7.9.5
+
+
+From 56f385bd32394eb85f74dafb7023567a83baf82c Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 6 Apr 2015 01:04:50 -0400
+Subject: [PATCH 4/6] Finished Part 2
+
+---
+ part2/Makefile      |    8 +++-----
+ part2/http-client.c |    6 +-----
+ 2 files changed, 4 insertions(+), 10 deletions(-)
+
+diff --git a/part2/Makefile b/part2/Makefile
+index 47cc04b..65c5dbe 100644
+--- a/part2/Makefile
++++ b/part2/Makefile
+@@ -40,10 +40,8 @@ http-client: http-client.o DieWithError.o
+ # $(CC) -c $(CFLAGS) <the-.c-file>
+ #
+ 
+-
+ http-client.o: http-client.c 
+ DieWithError.o: DieWithError.c
+-TCPEchoClient.o: TCPEchoClient.c
+ 
+ # Always provide the "clean" target that removes intermediate files.
+ # What you remove depend on your choice of coding tools
+@@ -54,7 +52,7 @@ TCPEchoClient.o: TCPEchoClient.c
+ # it’s a "phony" target.
+ .PHONY: clean
+ clean:
+-	rm -f *.o a.out core http-client TCPEchoClient
++	rm -f *.o a.out core http-client *.html *.txt
+ #  # "all" target is useful if your Makefile builds multiple programs.
+ # Here we’ll have it first do "clean", and rebuild the main target.
+ .PHONY: all
+@@ -63,5 +61,5 @@ all: clean main
+ 
+ 
+ .PHONY: valgrind
+-valgrind: mdb
+-	valgrind --leak-check=full --show-reachable=yes ./mdb-lookup my-mdb
++valgrind: 
++	valgrind --leak-check=full --show-reachable=yes ./http-client www.gnu.org 80 /software/make/manual/make.html
+diff --git a/part2/http-client.c b/part2/http-client.c
+index 41f617b..8c18d92 100644
+--- a/part2/http-client.c
++++ b/part2/http-client.c
+@@ -45,13 +45,9 @@ int main(int argc, char *argv[])
+     
+     echoServPort = atoi(argv[2]); /* Use given port, if any */
+     filePath = argv[3];
+-    //printf("%s", filePath);
+-    //char *title = strrchr(filePath, '/') + 1;
+-    char *title = "josh.txt";
+-    printf("%s", title);
++    char *title = strrchr(filePath, '/') + 1;
+     FILE *fileName = fopen(title, "w");
+ 
+-
+     /* Create a reliable, stream socket using TCP */
+     if ((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
+         DieWithError("socket() failed");
+-- 
+1.7.9.5
+
+
+From 084c2c36b86936a78138127598907b7c98962e75 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 6 Apr 2015 01:13:28 -0400
+Subject: [PATCH 5/6] Finished part 1, added sigpipe stuff
+
+---
+ part1/DieWithError.c      |    5 +++++
+ part1/mdb-lookup-server.c |    7 +++++--
+ part1/mdb.h               |    1 -
+ 3 files changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/part1/DieWithError.c b/part1/DieWithError.c
+index a00f377..f11d1d7 100644
+--- a/part1/DieWithError.c
++++ b/part1/DieWithError.c
+@@ -6,3 +6,8 @@ void DieWithError(char *errorMessage)
+     perror(errorMessage);
+     exit(1);
+ }
++
++void die(char *errorMessage){
++        fprintf(stderr, "%s\n", errorMessage);
++        exit(1); 
++}  /* Error handling function */
+diff --git a/part1/mdb-lookup-server.c b/part1/mdb-lookup-server.c
+index ae72d5b..12d8e99 100644
+--- a/part1/mdb-lookup-server.c
++++ b/part1/mdb-lookup-server.c
+@@ -10,10 +10,13 @@
+ #include <unistd.h>     /* for close() */
+ #include "mdb.h"
+ #include "mylist.h"
++#include <signal.h>
++
+ 
+ #define MAXPENDING 5    /* Maximum outstanding connection requests */
+ #define KeyMax 5
+ 
++void die(char *errorMessage);
+ void DieWithError(char *errorMessage);  /* Error handling function */
+ void HandleTCPClient(int clntSocket);   /* TCP client handling function */
+ int loadmdb(FILE *fp, struct List *dest);
+@@ -24,8 +27,8 @@ int main(int argc, char *argv[])
+ {
+      // ignore SIGPIPE so that we don’t terminate when we call
+      // send() on a disconnected socket.
+-     //if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+-     //    die("signal() failed");
++     if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
++         die("signal() failed");
+ 
+ 
+     int servSock;                    /* Socket descriptor for server */
+diff --git a/part1/mdb.h b/part1/mdb.h
+index 093f9d1..fc11bba 100644
+--- a/part1/mdb.h
++++ b/part1/mdb.h
+@@ -13,7 +13,6 @@ struct MdbRec {
+ 
+ 
+ 
+-
+ void DieWithError(char *errorMessage);
+ int mdbLookup(int clntSock, char *dbName);
+ #endif /* _MDB_H_ */
+-- 
+1.7.9.5
+
+
+From 2a1a1e0a0668eadf8d763879befb97b7a82eb832 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 6 Apr 2015 01:49:12 -0400
+Subject: [PATCH 6/6] fixed errors in http-client
+
+---
+ README.txt          |    7 +++++++
+ part2/http-client.c |    7 +++++--
+ 2 files changed, 12 insertions(+), 2 deletions(-)
+ create mode 100644 README.txt
+
+diff --git a/README.txt b/README.txt
+new file mode 100644
+index 0000000..3885c51
+--- /dev/null
++++ b/README.txt
+@@ -0,0 +1,7 @@
++
++
++Josh Fram
++jpf2141
++Lab6
++
++This lab works exactly as specified in the lab instructions.
+diff --git a/part2/http-client.c b/part2/http-client.c
+index 8c18d92..2635911 100644
+--- a/part2/http-client.c
++++ b/part2/http-client.c
+@@ -39,13 +39,16 @@ int main(int argc, char *argv[])
+     //get server ip from server name
+     struct hostent *he;
+     if ((he = gethostbyname(serv)) == NULL) {
+-         DieWithError("gethoatbyname failed");
++         DieWithError("gethostbyname failed");
+     }
+     servIP = inet_ntoa(*(struct in_addr *)he->h_addr);
+     
+     echoServPort = atoi(argv[2]); /* Use given port, if any */
+     filePath = argv[3];
+     char *title = strrchr(filePath, '/') + 1;
++    if(strlen(title) < 1) {
++        title = "index.html";
++    }
+     FILE *fileName = fopen(title, "w");
+ 
+     /* Create a reliable, stream socket using TCP */
+@@ -64,7 +67,7 @@ int main(int argc, char *argv[])
+         DieWithError("connect() failed");
+    
+     /*Create header text */ 
+-    sprintf(headerMSG, "GET %s HTTP/1.0\nHost: %s:%d\n\r\n",       //line 1 and 2, ended by \n and \n\r\n   
++    sprintf(headerMSG, "GET %s HTTP/1.0\r\nHost: %s:%d\r\n\r\n",       //line 1 and 2, ended by \n and \n\r\n   
+             filePath, serv, echoServPort);    
+     headerLen = strlen(headerMSG);          /* Determine input length */
+ 
+-- 
+1.7.9.5
+

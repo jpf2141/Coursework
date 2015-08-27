@@ -1,0 +1,825 @@
+From d301a498d9107a78d44189eadf9ffe55b87ba578 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Fri, 13 Feb 2015 00:57:47 -0500
+Subject: [PATCH 1/9] Implemented Valgrind, Copied Arrays, Fixed free() calls
+
+---
+ part1/isort.c |  105 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 105 insertions(+)
+ create mode 100644 part1/isort.c
+
+diff --git a/part1/isort.c b/part1/isort.c
+new file mode 100644
+index 0000000..7cafe98
+--- /dev/null
++++ b/part1/isort.c
+@@ -0,0 +1,105 @@
++#include <stdio.h>
++#include <stdlib.h>
++#include <time.h>
++
++
++
++int * fillArray(int arraySize);
++int * ascSort(int arraySize, int * pointer);
++int * descSort(int arraySize, int * pointer);
++void printArray(int arraySize, int * pointer);
++
++int main() {
++        
++        
++        printf("%s", "Please enter the array size: \n");
++        int input;      //input variable
++        scanf("%d", &input);    //scan for user input
++
++        int arraySize = input;
++        
++        int * randArrayPointer = fillArray(arraySize);
++        int * ascArrayPointer = ascSort(arraySize, randArrayPointer);
++        int * descArrayPointer = descSort(arraySize, randArrayPointer);
++
++        printArray(arraySize, randArrayPointer);
++        printArray(arraySize, ascArrayPointer);
++        printArray(arraySize, descArrayPointer);
++        
++        free(randArrayPointer);
++        free(ascArrayPointer);
++        free(descArrayPointer);
++        return 0;
++}
++
++
++int * fillArray(int arraySize) {
++
++        int memorySize = arraySize*sizeof(int); //number of bytes to allocate for array  
++        int *p;         //pointer to array start
++        p = malloc(memorySize);
++                if (p == NULL) {
++                        perror("malloc returned NULL");
++                        exit(1); 
++                }
++                
++        int i;
++        srandom(time(NULL));     //seed the random number generator   
++        for(i = 0; i < arraySize; i++) {
++                p[i] = random();
++        }
++        return p;
++}
++
++
++int * ascSort(int arraySize, int * randArrayPointer) { 
++    
++        int memorySize = arraySize*sizeof(int);
++
++        int *p;
++        p = malloc(memorySize);
++                if (p == NULL) {
++                        perror("malloc returned NULL");
++                        exit(1); 
++                }
++        
++        //copy array
++        int i; 
++        for(i = 0; i < arraySize; i++) { 
++            p[i] = randArrayPointer[i];
++        }
++
++        return p;
++}
++
++
++int * descSort(int arraySize, int * randArrayPointer) { 
++    
++        int memorySize = arraySize*sizeof(int);
++
++        int *p;
++        p = malloc(memorySize);
++                if (p == NULL) {
++                        perror("malloc returned NULL");
++                        exit(1); 
++                }
++        
++        //copy array
++        int i; 
++        for(i = 0; i < arraySize; i++) { 
++            p[i] = randArrayPointer[i];
++        }
++
++        return p;
++}
++
++
++        
++void printArray(int arraySize, int * arrayPointer) { 
++
++    int i; 
++    for(i = 0; i < arraySize; i++) { 
++        printf("p[%d] = %d\n", i, arrayPointer[i]);
++    }
++}
++
+-- 
+1.7.9.5
+
+
+From ec043c5c60f21fb157d1e0419380f6045d6bb8fc Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Fri, 13 Feb 2015 00:58:33 -0500
+Subject: [PATCH 2/9] Committed Makefile
+
+---
+ part1/Makefile |   61 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 61 insertions(+)
+ create mode 100644 part1/Makefile
+
+diff --git a/part1/Makefile b/part1/Makefile
+new file mode 100644
+index 0000000..35c6de8
+--- /dev/null
++++ b/part1/Makefile
+@@ -0,0 +1,61 @@
++# This Makefile should be used as a template for future Makefiles.
++# It’s heavily commented, so hopefully you can understand what each
++# line does.
++# We’ll use gcc for C compilation and g++ for C++ compilation
++CC = gcc
++CXX = g++
++# Let’s leave a place holder for additional include directories
++INCLUDES =
++# Compilation options:
++# -g for debugging info and -Wall enables all warnings
++CFLAGS = -g -Wall $(INCLUDES)
++# CXXFLAGS = -g -Wall $(INCLUDES)
++# Linking options:
++# -g for debugging info
++LDFLAGS = -g
++# List the libraries you need to link with in LDLIBS
++# For example, use "-lm" for the math library
++LDLIBS = 
++# The 1st target gets built when you type "make".
++# It’s usually your executable. ("main" in this case.)
++#
++# Note that we did not specify the linking rule.
++# Instead, we rely on one of make’s implicit rules:
++#
++# $(CC) $(LDFLAGS) <all-dependent-.o-files> $(LDLIBS)
++#
++# Also note that make assumes that main depends on main.o,
++# so we can omit it if we want to.
++isort: isort.o
++# main.o depends not only on main.c, but also on myadd.h because
++# main.c includes myadd.h. main.o will get recompiled if either
++# main.c or myadd.h get modified.
++#
++# make already knows main.o depends on main.c, so we can omit main.c
++# in the dependency list if we want to.#
++# make uses the following implicit rule to compile a .c file into a .o
++# file:
++#
++# $(CC) -c $(CFLAGS) <the-.c-file>
++#
++isort.o: isort.c
++# And myadd.o depends on myadd.c and myadd.h.
++
++
++
++
++# Always provide the "clean" target that removes intermediate files.
++# What you remove depend on your choice of coding tools
++# (different editors generate different backup files for example).
++
++#
++## And the "clean" target is not a file name, so we tell make that
++# it’s a "phony" target.
++.PHONY: clean
++clean:
++	rm -f *.o a.out core main
++#  # "all" target is useful if your Makefile builds multiple programs.
++# Here we’ll have it first do "clean", and rebuild the main target.
++.PHONY: all
++all: clean main
++
+-- 
+1.7.9.5
+
+
+From d7ead15c3abe8cb7ff9c15be71229e0a362e3a43 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Fri, 13 Feb 2015 15:35:50 -0500
+Subject: [PATCH 3/9] Started part 2, built Makefile
+
+---
+ part2/Makefile |   66 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ part2/twecho.c |    7 +++++-
+ 2 files changed, 72 insertions(+), 1 deletion(-)
+ create mode 100644 part2/Makefile
+
+diff --git a/part2/Makefile b/part2/Makefile
+new file mode 100644
+index 0000000..3095012
+--- /dev/null
++++ b/part2/Makefile
+@@ -0,0 +1,66 @@
++# This Makefile should be used as a template for future Makefiles.
++# It’s heavily commented, so hopefully you can understand what each
++# line does.
++# We’ll use gcc for C compilation and g++ for C++ compilation
++CC = gcc
++CXX = g++
++# Let’s leave a place holder for additional include directories
++INCLUDES =
++# Compilation options:
++# -g for debugging info and -Wall enables all warnings
++CFLAGS = -g -Wall $(INCLUDES)
++# CXXFLAGS = -g -Wall $(INCLUDES)
++# Linking options:
++# -g for debugging info
++LDFLAGS = -g
++# List the libraries you need to link with in LDLIBS
++# For example, use "-lm" for the math library
++LDLIBS = 
++# The 1st target gets built when you type "make".
++# It’s usually your executable. ("main" in this case.)
++#
++# Note that we did not specify the linking rule.
++# Instead, we rely on one of make’s implicit rules:
++#
++# $(CC) $(LDFLAGS) <all-dependent-.o-files> $(LDLIBS)
++#
++# Also note that make assumes that main depends on main.o,
++# so we can omit it if we want to.
++twecho: twecho.o
++# main.o depends not only on main.c, but also on myadd.h because
++# main.c includes myadd.h. main.o will get recompiled if either
++# main.c or myadd.h get modified.
++#
++# make already knows main.o depends on main.c, so we can omit main.c
++# in the dependency list if we want to.#
++# make uses the following implicit rule to compile a .c file into a .o
++# file:
++#
++# $(CC) -c $(CFLAGS) <the-.c-file>
++#
++twecho.o: twecho.c
++# And myadd.o depends on myadd.c and myadd.h.
++
++
++
++
++# Always provide the "clean" target that removes intermediate files.
++# What you remove depend on your choice of coding tools
++# (different editors generate different backup files for example).
++
++#
++## And the "clean" target is not a file name, so we tell make that
++# it’s a "phony" target.
++.PHONY: clean
++clean:
++	rm -f *.o a.out core main
++#  # "all" target is useful if your Makefile builds multiple programs.
++# Here we’ll have it first do "clean", and rebuild the main target.
++.PHONY: all
++all: clean main
++
++
++
++.PHONY: valgrind
++valgrind: isort
++	valgrind --leak-check=yes ./twecho
+diff --git a/part2/twecho.c b/part2/twecho.c
+index c70e975..3385fa1 100644
+--- a/part2/twecho.c
++++ b/part2/twecho.c
+@@ -9,7 +9,12 @@
+ 
+ static char **duplicateArgs(int argc, char **argv)
+ {
+-
++        int i;
++        char *
++        for(i = 1; i < argc; i++) { 
++                printf("Duplicate: %s\n", argv[i]);
++        }
++        return argv;
+ }
+ 
+ static void freeDuplicatedArgs(char **copy)
+-- 
+1.7.9.5
+
+
+From ab3a77b15d8c53081f0fd5d6041183e4b9b437ad Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 17 Feb 2015 23:26:20 -0500
+Subject: [PATCH 4/9] Finished Part 2, debugging memory leaks
+
+---
+ part2/Makefile |    2 +-
+ part2/twecho.c |   42 +++++++++++++++++++++++++++++++++++++-----
+ 2 files changed, 38 insertions(+), 6 deletions(-)
+
+diff --git a/part2/Makefile b/part2/Makefile
+index 3095012..4a8965d 100644
+--- a/part2/Makefile
++++ b/part2/Makefile
+@@ -62,5 +62,5 @@ all: clean main
+ 
+ 
+ .PHONY: valgrind
+-valgrind: isort
++valgrind: twecho
+ 	valgrind --leak-check=yes ./twecho
+diff --git a/part2/twecho.c b/part2/twecho.c
+index 3385fa1..f49917f 100644
+--- a/part2/twecho.c
++++ b/part2/twecho.c
+@@ -7,21 +7,53 @@
+ #include <string.h>
+ #include <ctype.h>
+ 
++
++char * capWord(char * currentArg);
++
++
++
+ static char **duplicateArgs(int argc, char **argv)
+ {
+         int i;
+-        char *
+-        for(i = 1; i < argc; i++) { 
+-                printf("Duplicate: %s\n", argv[i]);
++        char **p = malloc(argc*sizeof(char*));   //allocate space for the array of char pointers
++                if(p == NULL) {                 //(the array that contains the pointers to each string)
++                        perror("malloc returned NULL");
++                        exit(1);
++                } 
++        //copy array into p
++        for(i = 0; i < argc; i++) { 
++                p[i] = argv[i];
++                //printf("p: %s\n", p[i]);
++        }
++        int k; 
++        for(k = 0; k < argc; k++) {
++                char * word = p[k];
++                p[k] = capWord(word);
+         }
+-        return argv;
++        return p;
+ }
+ 
++
++
+ static void freeDuplicatedArgs(char **copy)
+ {
+-
++        free(copy);     
+ }
+ 
++char * capWord(char * currentArg) {
++        int i;
++        unsigned long charArrayLength = strlen(currentArg); 
++        char *charArray = malloc(charArrayLength);
++        if(charArray == NULL) {                
++                perror("malloc returned NULL");
++                exit(1);
++        }
++        for(i = 0; i < charArrayLength; i++) { 
++                charArray[i] = toupper(currentArg[i]);    
++        }
++      
++        return charArray;
++}
+ /*
+  * DO NOT MODIFY main().
+  */
+-- 
+1.7.9.5
+
+
+From 5f56efef1633cb4506aa8417b58b11e9b7c9c0a6 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Wed, 18 Feb 2015 02:23:01 -0500
+Subject: [PATCH 5/9] Finished everything but automated freeing
+
+---
+ part2/twecho.c |   30 ++++++++++++++++--------------
+ 1 file changed, 16 insertions(+), 14 deletions(-)
+
+diff --git a/part2/twecho.c b/part2/twecho.c
+index f49917f..f75ce51 100644
+--- a/part2/twecho.c
++++ b/part2/twecho.c
+@@ -14,21 +14,18 @@ char * capWord(char * currentArg);
+ 
+ static char **duplicateArgs(int argc, char **argv)
+ {
+-        int i;
+-        char **p = malloc(argc*sizeof(char*));   //allocate space for the array of char pointers
+-                if(p == NULL) {                 //(the array that contains the pointers to each string)
++        int memorySize = argc*sizeof(char*) + 8;
++        char **p;
++        p = malloc(memorySize);         //allocate space for the array of char pointers
++                if(p == NULL) {         //(the array that contains the pointers to each string)
+                         perror("malloc returned NULL");
+                         exit(1);
+-                } 
+-        //copy array into p
+-        for(i = 0; i < argc; i++) { 
+-                p[i] = argv[i];
+-                //printf("p: %s\n", p[i]);
+-        }
++                }
++
+         int k; 
+         for(k = 0; k < argc; k++) {
+-                char * word = p[k];
+-                p[k] = capWord(word);
++                char * word = capWord(argv[k]);
++                p[k] = word;
+         }
+         return p;
+ }
+@@ -37,13 +34,18 @@ static char **duplicateArgs(int argc, char **argv)
+ 
+ static void freeDuplicatedArgs(char **copy)
+ {
+-        free(copy);     
++        free(copy[0]);
++        free(copy[1]);
++        free(copy[2]);
++        free(copy);
+ }
+ 
+ char * capWord(char * currentArg) {
+         int i;
+-        unsigned long charArrayLength = strlen(currentArg); 
+-        char *charArray = malloc(charArrayLength);
++        unsigned long charArrayLength = strlen(currentArg) + 1;
++        int memorySize = charArrayLength *sizeof(char) + 1; 
++        char *charArray; 
++        charArray = malloc(memorySize);
+         if(charArray == NULL) {                
+                 perror("malloc returned NULL");
+                 exit(1);
+-- 
+1.7.9.5
+
+
+From 5568b075518899d71e03a7f304e0aa05383ab83e Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Wed, 18 Feb 2015 11:07:30 -0500
+Subject: [PATCH 6/9] Cleaned up memory issues; programming finished
+
+---
+ part2/twecho.c |   11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/part2/twecho.c b/part2/twecho.c
+index f75ce51..e4deb37 100644
+--- a/part2/twecho.c
++++ b/part2/twecho.c
+@@ -9,12 +9,14 @@
+ 
+ 
+ char * capWord(char * currentArg);
++int globArraySize;
+ 
+ 
+ 
+ static char **duplicateArgs(int argc, char **argv)
+ {
+-        int memorySize = argc*sizeof(char*) + 8;
++        int memorySize = argc*sizeof(char*);
++        globArraySize = argc;
+         char **p;
+         p = malloc(memorySize);         //allocate space for the array of char pointers
+                 if(p == NULL) {         //(the array that contains the pointers to each string)
+@@ -34,9 +36,10 @@ static char **duplicateArgs(int argc, char **argv)
+ 
+ static void freeDuplicatedArgs(char **copy)
+ {
+-        free(copy[0]);
+-        free(copy[1]);
+-        free(copy[2]);
++        int i; 
++        for(i = 0; i < globArraySize; i++) { 
++                free(copy[i]);
++        }           
+         free(copy);
+ }
+ 
+-- 
+1.7.9.5
+
+
+From 7b44838001c7c3978ff2ef34b5cd30d73d658bf1 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Wed, 18 Feb 2015 19:46:30 -0500
+Subject: [PATCH 7/9] Changed freeDuplicatedArgs() method
+
+---
+ part2/twecho.c |   15 ++++++---------
+ 1 file changed, 6 insertions(+), 9 deletions(-)
+
+diff --git a/part2/twecho.c b/part2/twecho.c
+index e4deb37..6cd3bae 100644
+--- a/part2/twecho.c
++++ b/part2/twecho.c
+@@ -6,17 +6,12 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <ctype.h>
+-
+-
+ char * capWord(char * currentArg);
+-int globArraySize;
+-
+ 
+ 
+ static char **duplicateArgs(int argc, char **argv)
+ {
+-        int memorySize = argc*sizeof(char*);
+-        globArraySize = argc;
++        int memorySize = argc*sizeof(char*) + 8;
+         char **p;
+         p = malloc(memorySize);         //allocate space for the array of char pointers
+                 if(p == NULL) {         //(the array that contains the pointers to each string)
+@@ -29,6 +24,7 @@ static char **duplicateArgs(int argc, char **argv)
+                 char * word = capWord(argv[k]);
+                 p[k] = word;
+         }
++        p[argc] = '\0';
+         return p;
+ }
+ 
+@@ -36,10 +32,11 @@ static char **duplicateArgs(int argc, char **argv)
+ 
+ static void freeDuplicatedArgs(char **copy)
+ {
+-        int i; 
+-        for(i = 0; i < globArraySize; i++) { 
++        int i = 0; 
++        while(copy[i] != '\0') {
+                 free(copy[i]);
+-        }           
++                i++;
++        }
+         free(copy);
+ }
+ 
+-- 
+1.7.9.5
+
+
+From 257ecdc1bbc95296dafd726c4c5724efde3a4ea6 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Wed, 18 Feb 2015 20:15:03 -0500
+Subject: [PATCH 8/9] Part 1 Makefile, isort.c, README.txt
+
+---
+ README.txt     |   21 ++++++++---------
+ part1/Makefile |    5 ++++
+ part1/isort.c  |   72 ++++++++++++++++++++++++++++++++++++++++++++++++++------
+ 3 files changed, 80 insertions(+), 18 deletions(-)
+
+diff --git a/README.txt b/README.txt
+index 66dfd3e..37d11d0 100644
+--- a/README.txt
++++ b/README.txt
+@@ -1,11 +1,10 @@
+-This file should contain:
+-
+-  - your name
+-  - your UNI
+-  - lab assignment number
+-  - description for each part
+-  
+-The description should indicate whether your solution for the part is
+-working or not.  You may also want to include anything else you would
+-like to communicate to the grader such as extra functionalities you
+-implemented or how you tried to fix your non-working code.
++
++  - Josh Fram
++  - jpf2141
++  - lab2
++
++
++Part 1 Description: My code works exactly as specified in the lab.
++Part 2 Description: My code works exactly as specified in the lab.
++ 
++
+diff --git a/part1/Makefile b/part1/Makefile
+index 35c6de8..8bfcc0d 100644
+--- a/part1/Makefile
++++ b/part1/Makefile
+@@ -59,3 +59,8 @@ clean:
+ .PHONY: all
+ all: clean main
+ 
++
++
++.PHONY: valgrind
++valgrind: isort
++	valgrind --leak-check=yes ./isort
+diff --git a/part1/isort.c b/part1/isort.c
+index 7cafe98..6a4cd7e 100644
+--- a/part1/isort.c
++++ b/part1/isort.c
+@@ -8,6 +8,8 @@ int * fillArray(int arraySize);
+ int * ascSort(int arraySize, int * pointer);
+ int * descSort(int arraySize, int * pointer);
+ void printArray(int arraySize, int * pointer);
++void sort_integer_array(int * begin, int * end, int ascending);
++
+ 
+ int main() {
+         
+@@ -18,13 +20,14 @@ int main() {
+ 
+         int arraySize = input;
+         
+-        int * randArrayPointer = fillArray(arraySize);
++        int * randArrayPointer = fillArray(arraySize); 
++        printf("Original Array:\n");
++        printArray(arraySize, randArrayPointer);        
+         int * ascArrayPointer = ascSort(arraySize, randArrayPointer);
+         int * descArrayPointer = descSort(arraySize, randArrayPointer);
+ 
+-        printArray(arraySize, randArrayPointer);
+-        printArray(arraySize, ascArrayPointer);
+-        printArray(arraySize, descArrayPointer);
++        //printArray(arraySize, ascArrayPointer);
++        //printArray(arraySize, descArrayPointer);
+         
+         free(randArrayPointer);
+         free(ascArrayPointer);
+@@ -46,7 +49,7 @@ int * fillArray(int arraySize) {
+         int i;
+         srandom(time(NULL));     //seed the random number generator   
+         for(i = 0; i < arraySize; i++) {
+-                p[i] = random();
++                p[i] = random() % 100;
+         }
+         return p;
+ }
+@@ -69,6 +72,7 @@ int * ascSort(int arraySize, int * randArrayPointer) {
+             p[i] = randArrayPointer[i];
+         }
+ 
++        sort_integer_array(p, p + arraySize, 1);
+         return p;
+ }
+ 
+@@ -89,17 +93,71 @@ int * descSort(int arraySize, int * randArrayPointer) {
+         for(i = 0; i < arraySize; i++) { 
+             p[i] = randArrayPointer[i];
+         }
+-
++        
++        sort_integer_array(p, p + arraySize, 0);
+         return p;
+ }
+ 
++/* This function sorts an integer array.
++ * begin points to the 1st element of the array.
++ * end points to ONE PAST the last element of the array.
++ * If ascending is 1, the array will be sorted in ascending order.
++ * If ascending is 0, the array will be sorted in descending order.
++ */
++void sort_integer_array(int * begin, int * end, int ascending)
++{
++/* In here, you will call your real sorting function (your own
++* or the qsort()).  Basically, I want to make sure that you
++* know how to translate the begin/end parameter to whatever
++* is required for your sorting function.
++* bubblesort code is taken from wikipedia; SOURCE:
++* http://en.wikibooks.org/wiki/Algorithm_Implementation/Sorting/Bubble_sort#C_1
++*/      
++        
++        //take the difference in pointer locations to find the 
++        //length of the array
++        int length = end - begin; 
++     
++        int i;
++        int j;
++        int tmp;
++
++        if(ascending == 1) { 
++                printf("Array in ascending order:\n");
++                for(i = 0; i < length - 1; i++) {
++                        for(j = 0; j < length - i - 1; j++) {
++                                if(begin[j] > begin[j+1]) {
++                                        tmp = begin[j];
++                                        begin[j] = begin[j + 1];
++                                        begin[j + 1] = tmp;
++                                }              
++                        }
++                }
++                
++        }
+ 
++        else {
++                printf("Array in descending order:\n");
++                for(i = 0; i < length - 1; i++) {
++                        for(j = 0; j < length - i - 1; j++) {
++                                if(begin[j] <  begin[j+1]) {
++                                        tmp = begin[j];
++                                        begin[j] = begin[j + 1];
++                                        begin[j + 1] = tmp;
++                                }              
++                        }
++                }
++               
++        }   
++        printArray(length, begin);     
++}
++ 
+         
+ void printArray(int arraySize, int * arrayPointer) { 
+ 
+     int i; 
+     for(i = 0; i < arraySize; i++) { 
+-        printf("p[%d] = %d\n", i, arrayPointer[i]);
++        printf("%d\n", arrayPointer[i]);
+     }
+ }
+ 
+-- 
+1.7.9.5
+
+
+From 6220a7cd256ceed546469a442aa8bbdd98af42d0 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Wed, 18 Feb 2015 20:23:39 -0500
+Subject: [PATCH 9/9] Appended Valgrind output to Readme
+
+---
+ README.txt |   53 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 53 insertions(+)
+
+diff --git a/README.txt b/README.txt
+index 37d11d0..40ce334 100644
+--- a/README.txt
++++ b/README.txt
+@@ -7,4 +7,57 @@
+ Part 1 Description: My code works exactly as specified in the lab.
+ Part 2 Description: My code works exactly as specified in the lab.
+  
++Valgrind output for Part1:
++==13822== Memcheck, a memory error detector
++==13822== Copyright (C) 2002-2011, and GNU GPL'd, by Julian Seward et al.
++==13822== Using Valgrind-3.7.0 and LibVEX; rerun with -h for copyright info
++==13822== Command: ./isort
++==13822== 
++Please enter the array size: 
++Original Array:
++73
++95
++50
++90
++49
++Array in ascending order:
++49
++50
++73
++90
++95
++Array in descending order:
++95
++90
++73
++50
++49
++==13822== 
++==13822== HEAP SUMMARY:
++==13822==     in use at exit: 0 bytes in 0 blocks
++==13822==   total heap usage: 3 allocs, 3 frees, 60 bytes allocated
++==13822== 
++==13822== All heap blocks were freed -- no leaks are possible
++==13822== 
++==13822== For counts of detected and suppressed errors, rerun with: -v
++==13822== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 2 from 2)
+ 
++
++Valgrind output for Part2:
++==14255== Memcheck, a memory error detector
++==14255== Copyright (C) 2002-2011, and GNU GPL'd, by Julian Seward et al.
++==14255== Using Valgrind-3.7.0 and LibVEX; rerun with -h for copyright info
++==14255== Command: ./twecho hello world dude
++==14255== 
++hello HELLO
++world WORLD
++dude DUDE
++==14255== 
++==14255== HEAP SUMMARY:
++==14255==     in use at exit: 0 bytes in 0 blocks
++==14255==   total heap usage: 5 allocs, 5 frees, 70 bytes allocated
++==14255== 
++==14255== All heap blocks were freed -- no leaks are possible
++==14255== 
++==14255== For counts of detected and suppressed errors, rerun with: -v
++==14255== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 2 from 2)
+-- 
+1.7.9.5
+

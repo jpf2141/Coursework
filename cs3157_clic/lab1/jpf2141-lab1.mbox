@@ -1,0 +1,977 @@
+From 080912f45010c308aab3be4a5102397d80220b0d Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 31 Jan 2015 19:37:50 -0500
+Subject: [PATCH 01/13] Started main method i/o
+
+---
+ part1/main.c |   17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+ create mode 100644 part1/main.c
+
+diff --git a/part1/main.c b/part1/main.c
+new file mode 100644
+index 0000000..6b8726e
+--- /dev/null
++++ b/part1/main.c
+@@ -0,0 +1,17 @@
++#include <stdio.h>
++
++
++main (int argc, char *argv[])
++{
++
++        int number1;
++        int number2;
++        
++        printf("Please enter an integer: ");
++        scanf("%d", &number1);
++        printf("Please enter another integer: ");
++        scanf("%d", &number2);
++        
++        printf ("You entered: %s\n", a_word);
++        return 0;
++}
+-- 
+1.7.9.5
+
+
+From 818eef6fbedb1c977d0f3acd96565f895f13bff9 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 31 Jan 2015 21:32:42 -0500
+Subject: [PATCH 02/13] fixed user input and added methods
+
+---
+ part1/main.c |   40 ++++++++++++++++++++++++++++++----------
+ 1 file changed, 30 insertions(+), 10 deletions(-)
+
+diff --git a/part1/main.c b/part1/main.c
+index 6b8726e..5597733 100644
+--- a/part1/main.c
++++ b/part1/main.c
+@@ -1,17 +1,37 @@
+-#include <stdio.h>
++#include "stdio.h"
+ 
+ 
+-main (int argc, char *argv[])
+-{
+ 
+-        int number1;
+-        int number2;
++int userPrompt();
++
++
++int main(void) {
++
++        int a;
++        int b;
++
++        //prompt the user for number inputs
++        printf("Enter numbers to calculate the average!");
++        a = userPrompt();
++        b = userPrompt();
++
++        printf("You typed in %d and %d\n", a, b);
++        
+         
+-        printf("Please enter an integer: ");
+-        scanf("%d", &number1);
+-        printf("Please enter another integer: ");
+-        scanf("%d", &number2);
+         
+-        printf ("You entered: %s\n", a_word);
+         return 0;
++                 
++
++}
++
++
++
++//this method asks the user to enter an integer value
++//it is called whenever input is required for the program
++int userPrompt() {
++        
++    int value;
++    printf("Please input an integer value: ");
++    scanf("%d", &value);
++    return value;
+ }
+-- 
+1.7.9.5
+
+
+From 5fc8681130bff36a2fd3f087116b5c537937bc04 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 31 Jan 2015 22:07:46 -0500
+Subject: [PATCH 03/13] Working average method added
+
+---
+ part1/main.c |   13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/part1/main.c b/part1/main.c
+index 5597733..931c67a 100644
+--- a/part1/main.c
++++ b/part1/main.c
+@@ -3,6 +3,7 @@
+ 
+ 
+ int userPrompt();
++int average(int a, int b);
+ 
+ 
+ int main(void) {
+@@ -11,10 +12,12 @@ int main(void) {
+         int b;
+ 
+         //prompt the user for number inputs
+-        printf("Enter numbers to calculate the average!");
++        printf("Enter numbers to calculate the average!\n\n");
+         a = userPrompt();
+         b = userPrompt();
+ 
++        average(a, b);
++
+         printf("You typed in %d and %d\n", a, b);
+         
+         
+@@ -35,3 +38,11 @@ int userPrompt() {
+     scanf("%d", &value);
+     return value;
+ }
++
++int average(int a, int b) {
++        float sum = (a + b);
++        float average = sum/2;
++        printf("The average is: %f\n", average);
++        return 0;
++}
++
+-- 
+1.7.9.5
+
+
+From 5aa2562ab0c2af91babf8cff354681e417a39e63 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 31 Jan 2015 22:47:50 -0500
+Subject: [PATCH 04/13] Created new files
+
+---
+ part1/main.c  |   14 ++++++--------
+ part1/prime.c |   10 ++++++++++
+ part1/prime.h |    1 +
+ 3 files changed, 17 insertions(+), 8 deletions(-)
+ create mode 100644 part1/prime.c
+ create mode 100644 part1/prime.h
+
+diff --git a/part1/main.c b/part1/main.c
+index 931c67a..e45528a 100644
+--- a/part1/main.c
++++ b/part1/main.c
+@@ -4,7 +4,7 @@
+ 
+ int userPrompt();
+ int average(int a, int b);
+-
++int prime(int x);
+ 
+ int main(void) {
+ 
+@@ -15,16 +15,14 @@ int main(void) {
+         printf("Enter numbers to calculate the average!\n\n");
+         a = userPrompt();
+         b = userPrompt();
+-
+         average(a, b);
++        prime(a);
++        prime(b);
+ 
+-        printf("You typed in %d and %d\n", a, b);
+-        
+-        
+-        
+-        return 0;
+-                 
+ 
++        //printf("You typed in %d and %d\n", a, b); 
++
++        return 0;
+ }
+ 
+ 
+diff --git a/part1/prime.c b/part1/prime.c
+new file mode 100644
+index 0000000..7f4b321
+--- /dev/null
++++ b/part1/prime.c
+@@ -0,0 +1,10 @@
++#include <stdio.h>
++#include "prime.h"
++
++
++int prime(int x) {
++
++
++}
++
++
+diff --git a/part1/prime.h b/part1/prime.h
+new file mode 100644
+index 0000000..945a5cc
+--- /dev/null
++++ b/part1/prime.h
+@@ -0,0 +1 @@
++int prime(int x);
+-- 
+1.7.9.5
+
+
+From 18f6e6038479f3d680447a4923b74b55149721b2 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sun, 1 Feb 2015 16:55:01 -0500
+Subject: [PATCH 05/13] Making sure all files are tracked
+
+---
+ part1/prime.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/part1/prime.c b/part1/prime.c
+index 7f4b321..09c7e17 100644
+--- a/part1/prime.c
++++ b/part1/prime.c
+@@ -5,6 +5,8 @@
+ int prime(int x) {
+ 
+ 
++
++        return 0;
+ }
+ 
+ 
+-- 
+1.7.9.5
+
+
+From 0c8a32b149e5ebb872d18c0db40306836b7b52ad Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 2 Feb 2015 00:10:27 -0500
+Subject: [PATCH 06/13] Finished prime number function
+
+---
+ part1/Makefile |   57 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 57 insertions(+)
+ create mode 100644 part1/Makefile
+
+diff --git a/part1/Makefile b/part1/Makefile
+new file mode 100644
+index 0000000..70f211a
+--- /dev/null
++++ b/part1/Makefile
+@@ -0,0 +1,57 @@
++# This Makefile should be used as a template for future Makefiles.
++# It’s heavily commented, so hopefully you can understand what each
++# line does.
++# We’ll use gcc for C compilation and g++ for C++ compilation
++CC = gcc
++CXX = g++
++# Let’s leave a place holder for additional include directories
++INCLUDES =
++# Compilation options:
++# -g for debugging info and -Wall enables all warnings
++CFLAGS = -g -Wall $(INCLUDES)
++# CXXFLAGS = -g -Wall $(INCLUDES)
++# Linking options:
++# -g for debugging info
++LDFLAGS = -g
++# List the libraries you need to link with in LDLIBS
++# For example, use "-lm" for the math library
++LDLIBS =
++# The 1st target gets built when you type "make".
++# It’s usually your executable. ("main" in this case.)
++#
++# Note that we did not specify the linking rule.
++# Instead, we rely on one of make’s implicit rules:
++#
++# $(CC) $(LDFLAGS) <all-dependent-.o-files> $(LDLIBS)
++#
++# Also note that make assumes that main depends on main.o,
++# so we can omit it if we want to.
++main: main.o prime.o
++# main.o depends not only on main.c, but also on myadd.h because
++# main.c includes myadd.h. main.o will get recompiled if either
++# main.c or myadd.h get modified.
++#
++# make already knows main.o depends on main.c, so we can omit main.c
++# in the dependency list if we want to.#
++# make uses the following implicit rule to compile a .c file into a .o
++# file:
++#
++# $(CC) -c $(CFLAGS) <the-.c-file>
++#
++main.o: main.c 
++# And myadd.o depends on myadd.c and myadd.h.
++prime.o: prime.c prime.h
++# Always provide the "clean" target that removes intermediate files.
++# What you remove depend on your choice of coding tools
++# (different editors generate different backup files for example).
++#
++# And the "clean" target is not a file name, so we tell make that
++# it’s a "phony" target.
++.PHONY: clean
++clean: 
++	rm -f *.o a.out core main
++# "all" target is useful if your Makefile builds multiple programs.
++# Here we’ll have it first do "clean", and rebuild the main target.	
++.PHONY: all
++all: clean main
++
+-- 
+1.7.9.5
+
+
+From 77a4c072ff17ce4d2dd1b05f64759fc6d0b716c6 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Mon, 2 Feb 2015 12:17:16 -0500
+Subject: [PATCH 07/13] Fixed prime.c; fixed prime.h with math.h thing
+
+---
+ part1/Makefile |    4 ++--
+ part1/main.c   |   23 +++++++++++++++++------
+ part1/prime.c  |   12 ++++++++++++
+ part1/prime.h  |    1 +
+ 4 files changed, 32 insertions(+), 8 deletions(-)
+
+diff --git a/part1/Makefile b/part1/Makefile
+index 70f211a..22d0aca 100644
+--- a/part1/Makefile
++++ b/part1/Makefile
+@@ -15,7 +15,7 @@ CFLAGS = -g -Wall $(INCLUDES)
+ LDFLAGS = -g
+ # List the libraries you need to link with in LDLIBS
+ # For example, use "-lm" for the math library
+-LDLIBS =
++LDLIBS = -lm
+ # The 1st target gets built when you type "make".
+ # It’s usually your executable. ("main" in this case.)
+ #
+@@ -40,7 +40,7 @@ main: main.o prime.o
+ #
+ main.o: main.c 
+ # And myadd.o depends on myadd.c and myadd.h.
+-prime.o: prime.c prime.h
++prime.o: prime.c prime.h 
+ # Always provide the "clean" target that removes intermediate files.
+ # What you remove depend on your choice of coding tools
+ # (different editors generate different backup files for example).
+diff --git a/part1/main.c b/part1/main.c
+index e45528a..608a686 100644
+--- a/part1/main.c
++++ b/part1/main.c
+@@ -5,6 +5,7 @@
+ int userPrompt();
+ int average(int a, int b);
+ int prime(int x);
++void primeOut(int x, int y);
+ 
+ int main(void) {
+ 
+@@ -16,8 +17,8 @@ int main(void) {
+         a = userPrompt();
+         b = userPrompt();
+         average(a, b);
+-        prime(a);
+-        prime(b);
++        primeOut(a, prime(a));
++        primeOut(b, prime(b));
+ 
+ 
+         //printf("You typed in %d and %d\n", a, b); 
+@@ -31,10 +32,10 @@ int main(void) {
+ //it is called whenever input is required for the program
+ int userPrompt() {
+         
+-    int value;
+-    printf("Please input an integer value: ");
+-    scanf("%d", &value);
+-    return value;
++        int value;
++        printf("Please input an integer value: ");
++        scanf("%d", &value);
++        return value;
+ }
+ 
+ int average(int a, int b) {
+@@ -44,3 +45,13 @@ int average(int a, int b) {
+         return 0;
+ }
+ 
++void primeOut(int x, int y) {
++        if(y == 0) {
++                printf("%d is not a prime number!\n", x);
++        }
++        else {
++                printf("%d is a prime number!\n", x);
++        } 
++        return;
++}
++
+diff --git a/part1/prime.c b/part1/prime.c
+index 09c7e17..9fb6860 100644
+--- a/part1/prime.c
++++ b/part1/prime.c
+@@ -1,11 +1,23 @@
+ #include <stdio.h>
++#include <math.h>
+ #include "prime.h"
+ 
+ 
+ int prime(int x) {
+ 
++   if(x<=1) {
++        return 1;
++   }
+ 
++        int i;
++        int upperBound = (int) sqrt(x);
+ 
++
++        for(i = 2; i <= upperBound; i++) {
++                if(x % i != 0) {
++                        return 1;
++                }        
++        }   
+         return 0;
+ }
+ 
+diff --git a/part1/prime.h b/part1/prime.h
+index 945a5cc..b28ceac 100644
+--- a/part1/prime.h
++++ b/part1/prime.h
+@@ -1 +1,2 @@
++#include <math.h>
+ int prime(int x);
+-- 
+1.7.9.5
+
+
+From a669cc82977f424b92386b5f8bbb94bae0dadc24 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 3 Feb 2015 00:47:21 -0500
+Subject: [PATCH 08/13] Finished Part1
+
+---
+ part1/gcd.c |   19 +++++++++++++++++++
+ part1/gcd.h |    2 ++
+ 2 files changed, 21 insertions(+)
+ create mode 100644 part1/gcd.c
+ create mode 100644 part1/gcd.h
+
+diff --git a/part1/gcd.c b/part1/gcd.c
+new file mode 100644
+index 0000000..4c22191
+--- /dev/null
++++ b/part1/gcd.c
+@@ -0,0 +1,19 @@
++#include "gcd.h"
++
++
++int gcd(int x, int y) {
++
++        int temp = 0;
++
++        if(x < y) {
++                temp = x;
++                x = y;
++                y = temp;
++        }
++        while(y != 0) {
++                temp = x % y;
++                x = y;
++                y = temp;
++        }
++        return x;
++}
+diff --git a/part1/gcd.h b/part1/gcd.h
+new file mode 100644
+index 0000000..d58486f
+--- /dev/null
++++ b/part1/gcd.h
+@@ -0,0 +1,2 @@
++int gcd(int a, int b);
++
+-- 
+1.7.9.5
+
+
+From 6d315cc64387651ae6a8319d4d14370f70cf87bd Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Tue, 3 Feb 2015 23:05:56 -0500
+Subject: [PATCH 09/13] Started part2; implemented printf-test
+
+---
+ part2/Makefile  |   60 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ part2/convert.c |   12 +++++++++++
+ 2 files changed, 72 insertions(+)
+ create mode 100644 part2/Makefile
+ create mode 100644 part2/convert.c
+
+diff --git a/part2/Makefile b/part2/Makefile
+new file mode 100644
+index 0000000..02c9038
+--- /dev/null
++++ b/part2/Makefile
+@@ -0,0 +1,60 @@
++# This Makefile should be used as a template for future Makefiles.
++# It’s heavily commented, so hopefully you can understand what each
++# line does.
++# We’ll use gcc for C compilation and g++ for C++ compilation
++CC = gcc
++CXX = g++
++# Let’s leave a place holder for additional include directories
++INCLUDES =
++# Compilation options:
++# -g for debugging info and -Wall enables all warnings
++CFLAGS = -g -Wall $(INCLUDES)
++# CXXFLAGS = -g -Wall $(INCLUDES)
++# Linking options:
++# -g for debugging info
++LDFLAGS = -g
++# List the libraries you need to link with in LDLIBS
++# For example, use "-lm" for the math library
++LDLIBS = 
++# The 1st target gets built when you type "make".
++# It’s usually your executable. ("main" in this case.)
++#
++# Note that we did not specify the linking rule.
++# Instead, we rely on one of make’s implicit rules:
++#
++# $(CC) $(LDFLAGS) <all-dependent-.o-files> $(LDLIBS)
++#
++# Also note that make assumes that main depends on main.o,
++# so we can omit it if we want to.
++convert: convert.o
++# main.o depends not only on main.c, but also on myadd.h because
++# main.c includes myadd.h. main.o will get recompiled if either
++# main.c or myadd.h get modified.
++#
++# make already knows main.o depends on main.c, so we can omit main.c
++# in the dependency list if we want to.#
++# make uses the following implicit rule to compile a .c file into a .o
++# file:
++#
++# $(CC) -c $(CFLAGS) <the-.c-file>
++#
++convert.o: convert.c
++# And myadd.o depends on myadd.c and myadd.h.
++
++
++
++
++# Always provide the "clean" target that removes intermediate files.
++# What you remove depend on your choice of coding tools
++# (different editors generate different backup files for example).
++#
++# And the "clean" target is not a file name, so we tell make that
++# it’s a "phony" target.
++.PHONY: clean
++clean: 
++	rm -f *.o a.out core main
++# "all" target is useful if your Makefile builds multiple programs.
++# Here we’ll have it first do "clean", and rebuild the main target.	
++.PHONY: all
++all: clean main
++
+diff --git a/part2/convert.c b/part2/convert.c
+new file mode 100644
+index 0000000..6038b4d
+--- /dev/null
++++ b/part2/convert.c
+@@ -0,0 +1,12 @@
++#include <stdio.h>
++
++int main()
++{
++    int x = 256;
++
++    printf("printf-ing -1 as %%d: %d\n", x);
++    printf("printf-ing -1 as %%u: %u\n", x);
++    printf("printf-ing -1 as %%x: %x\n", x);
++
++    return 0;
++}
+-- 
+1.7.9.5
+
+
+From d15e8bc7c47ab705ee84228f820725a46ca1b176 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Wed, 4 Feb 2015 01:54:04 -0500
+Subject: [PATCH 10/13] almost finished binary method
+
+---
+ README.txt      |    5 +++++
+ part1/Makefile  |    9 ++++++---
+ part1/main.c    |   24 +++++++++++++++++++-----
+ part1/prime.c   |   19 ++++++-------------
+ part1/prime.h   |    1 -
+ part2/convert.c |   44 +++++++++++++++++++++++++++++++++++++++-----
+ 6 files changed, 75 insertions(+), 27 deletions(-)
+
+diff --git a/README.txt b/README.txt
+index 66dfd3e..521521a 100644
+--- a/README.txt
++++ b/README.txt
+@@ -9,3 +9,8 @@ The description should indicate whether your solution for the part is
+ working or not.  You may also want to include anything else you would
+ like to communicate to the grader such as extra functionalities you
+ implemented or how you tried to fix your non-working code.
++
++
++
++    Source for Euclidean algorithm:    
++    http://simple.wikipedia.org/wiki/Euclidean_algorithm#C.2FC.2B.2B_source_code
+diff --git a/part1/Makefile b/part1/Makefile
+index 22d0aca..b108f79 100644
+--- a/part1/Makefile
++++ b/part1/Makefile
+@@ -15,7 +15,7 @@ CFLAGS = -g -Wall $(INCLUDES)
+ LDFLAGS = -g
+ # List the libraries you need to link with in LDLIBS
+ # For example, use "-lm" for the math library
+-LDLIBS = -lm
++LDLIBS = 
+ # The 1st target gets built when you type "make".
+ # It’s usually your executable. ("main" in this case.)
+ #
+@@ -26,7 +26,7 @@ LDLIBS = -lm
+ #
+ # Also note that make assumes that main depends on main.o,
+ # so we can omit it if we want to.
+-main: main.o prime.o
++main: main.o prime.o gcd.o
+ # main.o depends not only on main.c, but also on myadd.h because
+ # main.c includes myadd.h. main.o will get recompiled if either
+ # main.c or myadd.h get modified.
+@@ -40,7 +40,10 @@ main: main.o prime.o
+ #
+ main.o: main.c 
+ # And myadd.o depends on myadd.c and myadd.h.
+-prime.o: prime.c prime.h 
++prime.o: prime.c prime.h
++
++gcd.o: gcd.c gcd.h
++
+ # Always provide the "clean" target that removes intermediate files.
+ # What you remove depend on your choice of coding tools
+ # (different editors generate different backup files for example).
+diff --git a/part1/main.c b/part1/main.c
+index 608a686..ce1496d 100644
+--- a/part1/main.c
++++ b/part1/main.c
+@@ -1,11 +1,13 @@
+-#include "stdio.h"
+-
++#include <stdio.h>
+ 
+ 
+ int userPrompt();
+ int average(int a, int b);
+ int prime(int x);
++int gcd(int x, int y);
+ void primeOut(int x, int y);
++void gcdOut(int x, int y, int z);
++
+ 
+ int main(void) {
+ 
+@@ -16,18 +18,18 @@ int main(void) {
+         printf("Enter numbers to calculate the average!\n\n");
+         a = userPrompt();
+         b = userPrompt();
++        
+         average(a, b);
+         primeOut(a, prime(a));
+         primeOut(b, prime(b));
+-
++        
++        gcdOut(gcd(a,b), a, b);
+ 
+         //printf("You typed in %d and %d\n", a, b); 
+ 
+         return 0;
+ }
+ 
+-
+-
+ //this method asks the user to enter an integer value
+ //it is called whenever input is required for the program
+ int userPrompt() {
+@@ -55,3 +57,15 @@ void primeOut(int x, int y) {
+         return;
+ }
+ 
++void gcdOut(int x, int y, int z) {
++        if(x == 1) {
++            printf("%d and %d are relatively prime numbers!\n", y, z);
++        }
++        else {
++            printf("%d and %d are not relatively prime numbers!\n", y, z);
++        }
++}
++
++
++
++
+diff --git a/part1/prime.c b/part1/prime.c
+index 9fb6860..29e5188 100644
+--- a/part1/prime.c
++++ b/part1/prime.c
+@@ -1,24 +1,17 @@
+ #include <stdio.h>
+-#include <math.h>
+ #include "prime.h"
+ 
+ 
+ int prime(int x) {
+ 
+-   if(x<=1) {
+-        return 1;
+-   }
++    int i;
+ 
+-        int i;
+-        int upperBound = (int) sqrt(x);
+-
+-
+-        for(i = 2; i <= upperBound; i++) {
+-                if(x % i != 0) {
+-                        return 1;
++    for(i = 2; i <= (x-1); i++) {
++        if(x % i == 0) {
++                return 0;
+                 }        
+-        }   
+-        return 0;
++        }
++   return 1;
+ }
+ 
+ 
+diff --git a/part1/prime.h b/part1/prime.h
+index b28ceac..945a5cc 100644
+--- a/part1/prime.h
++++ b/part1/prime.h
+@@ -1,2 +1 @@
+-#include <math.h>
+ int prime(int x);
+diff --git a/part2/convert.c b/part2/convert.c
+index 6038b4d..9ccead3 100644
+--- a/part2/convert.c
++++ b/part2/convert.c
+@@ -1,12 +1,46 @@
+ #include <stdio.h>
+ 
++void output(int value);
++void decimalToBinary(int value);
++
+ int main()
++
++
+ {
+-    int x = 256;
++        int value;
++        scanf("%d", &value);       
++        output(value);
++               
++        return 0;
++}
++
++
++void output(int value) {
+ 
+-    printf("printf-ing -1 as %%d: %d\n", x);
+-    printf("printf-ing -1 as %%u: %u\n", x);
+-    printf("printf-ing -1 as %%x: %x\n", x);
++        printf("signed dec:     %d\n", value);
++        printf("unsigned dec:   %u\n", value);
++        printf("hex:            %x\n", value);
++        printf("binary:         ");
++        decimalToBinary(value);
++}
++
++void decimalToBinary(int value) {
++        int result = value;
++        int remainder;
++        int i; 
++        int bin[32];
++        for(i = 32; i >=0; i--) {
++                remainder = result % 2;
++                result = result / 2;
++                bin[i] = remainder;
++        }
+ 
+-    return 0;
++        int j;
++        for(j = 0; j < 32; j++) {
++         //       printf("Element[%d] = %d\n", j, bin[j] ); 
++        } 
+ }
++
++
++
++
+-- 
+1.7.9.5
+
+
+From 4c1754990d612989b0885573508ebae811ffb499 Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 7 Feb 2015 15:04:03 -0500
+Subject: [PATCH 11/13] Final test commit; removing printf-test
+
+---
+ part2/printf-test.c |   12 ------------
+ 1 file changed, 12 deletions(-)
+ delete mode 100644 part2/printf-test.c
+
+diff --git a/part2/printf-test.c b/part2/printf-test.c
+deleted file mode 100644
+index 10f2b58..0000000
+--- a/part2/printf-test.c
++++ /dev/null
+@@ -1,12 +0,0 @@
+-#include <stdio.h>
+-
+-int main()
+-{
+-    int x = -1;
+-
+-    printf("printf-ing -1 as %%d: %d\n", x);
+-    printf("printf-ing -1 as %%u: %u\n", x);
+-    printf("printf-ing -1 as %%x: %x\n", x);
+-
+-    return 0;
+-}
+-- 
+1.7.9.5
+
+
+From dba65aa07de433ec1bbc42f28a128a00748a17ec Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 7 Feb 2015 15:20:44 -0500
+Subject: [PATCH 12/13] Added README.txt for lab1 directory
+
+---
+ README.txt |   21 +++++++++++++--------
+ 1 file changed, 13 insertions(+), 8 deletions(-)
+
+diff --git a/README.txt b/README.txt
+index 521521a..454658d 100644
+--- a/README.txt
++++ b/README.txt
+@@ -1,16 +1,21 @@
+ This file should contain:
+ 
+-  - your name
+-  - your UNI
+-  - lab assignment number
+-  - description for each part
++  - Josh Fram
++  - jpf2141
++  - lab1
+   
+-The description should indicate whether your solution for the part is
+-working or not.  You may also want to include anything else you would
+-like to communicate to the grader such as extra functionalities you
+-implemented or how you tried to fix your non-working code.
+ 
++Part1 Description: 
+ 
++My code works exactly as specified in
++the lab.
++
++Part2 Description: 
++
++My code works exactly as specified in
++the lab.
++
++I used wikipedia for the euclidean algorithm. 
+ 
+     Source for Euclidean algorithm:    
+     http://simple.wikipedia.org/wiki/Euclidean_algorithm#C.2FC.2B.2B_source_code
+-- 
+1.7.9.5
+
+
+From 8c86e2a8c437ada3e5d9ee5e042b82c82458772e Mon Sep 17 00:00:00 2001
+From: Joshua Fram <jpf2141@columbia.edu>
+Date: Sat, 7 Feb 2015 15:25:19 -0500
+Subject: [PATCH 13/13] Final Commit; part2 directory
+
+---
+ part2/Makefile  |    2 +-
+ part2/convert.c |   36 +++++++++++++++++++-----------------
+ 2 files changed, 20 insertions(+), 18 deletions(-)
+
+diff --git a/part2/Makefile b/part2/Makefile
+index 02c9038..0888cbc 100644
+--- a/part2/Makefile
++++ b/part2/Makefile
+@@ -56,5 +56,5 @@ clean:
+ # "all" target is useful if your Makefile builds multiple programs.
+ # Here we’ll have it first do "clean", and rebuild the main target.	
+ .PHONY: all
+-all: clean main
++all: clean convert
+ 
+diff --git a/part2/convert.c b/part2/convert.c
+index 9ccead3..88e37d0 100644
+--- a/part2/convert.c
++++ b/part2/convert.c
+@@ -21,24 +21,26 @@ void output(int value) {
+         printf("unsigned dec:   %u\n", value);
+         printf("hex:            %x\n", value);
+         printf("binary:         ");
+-        decimalToBinary(value);
+-}
+-
+-void decimalToBinary(int value) {
+-        int result = value;
+-        int remainder;
+-        int i; 
+-        int bin[32];
+-        for(i = 32; i >=0; i--) {
+-                remainder = result % 2;
+-                result = result / 2;
+-                bin[i] = remainder;
++        
++       int i;
++       int bitShifted;
++       for(i = 31 ;i >= 0; i--) {
++                bitShifted = value >> i;//the decimal's bitwise representation
++                                        //is shifted all the way to the right
++                                        //so that the representation becomes
++                                        //00000....0 or 000000....1
++               
++                if(bitShifted & 1) {    //this statement asks: is the LSB
++                        printf("1");    //1; if yes, bitwise AND returns true
++                }  
++                else {
++                        printf("0");
++                }
++                if(i % 4 == 0) {
++                        printf(" ");
++                }
+         }
+-
+-        int j;
+-        for(j = 0; j < 32; j++) {
+-         //       printf("Element[%d] = %d\n", j, bin[j] ); 
+-        } 
++        printf("\n");   
+ }
+ 
+ 
+-- 
+1.7.9.5
+
