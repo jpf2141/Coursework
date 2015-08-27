@@ -1,0 +1,56 @@
+
+import java.awt.*;
+import java.util.ArrayList;
+
+import javax.swing.JApplet;
+import javax.swing.JFrame;
+
+
+public class GenPlotter extends JApplet {
+
+	static Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+	static int width = (int) screenSize.getWidth();
+	static int height =(int) screenSize.getHeight();
+	static final int xDimension = width;
+	static final int yDimension = height;
+	static final int scaleFactor = 2;
+
+	
+	static boolean doDijkstra;
+	static boolean plotSale;
+
+
+	public GenPlotter() {
+	}
+
+	public void init() {
+		setBackground(Color.LIGHT_GRAY);
+		setForeground(Color.white);
+	}
+
+	public void paint(Graphics g) {
+		Graphics2D g2 = (Graphics2D) g;
+	
+		
+	}
+
+	
+	public void drawPlot() {
+		JFrame f = new JFrame("City Graph");
+		f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		JApplet applet = new GenPlotter();
+		f.getContentPane().add(applet);
+		applet.init();
+		f.pack();
+		f.setSize(new Dimension(xDimension, yDimension));
+		f.setVisible(true);
+
+	}
+
+	
+
+	
+	
+	
+
+}
